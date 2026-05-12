@@ -1,0 +1,47 @@
+AEGIS - AI INTRUSION DETECTION SYSTEM
+Security Report: 2026-05-09 15:12:17
+=======================================================
+
+MODEL PERFORMANCE
+----------------------------------------
+Algorithm        : Random Forest (100 trees)
+Dataset          : CIC-IDS2017 - 2,313,810 rows
+Accuracy         : 99.88%
+ROC-AUC          : 1.0000
+Cross-Val F1     : 0.9985 (5-fold)
+False Alarm Rate : 0.0713%
+Features used    : 77 network flow features
+
+DETECTION SUMMARY
+----------------------------------------
+Total flows  : 160
+Attacks      : 5
+IPs blocked  : 5
+
+ATTACK LOG
+----------------------------------------
+[2026-05-06 09:48:25] 127.0.0.1 - SSH Brute Force (port 22) - BLOCKED
+[2026-05-07 15:20:11] 127.0.0.1 - SSH Brute Force (port 22) - BLOCKED
+[2026-05-09 14:13:48] 127.0.0.1 - SYN Flood / Brute Force - BLOCKED
+[2026-05-09 14:59:51] 127.0.0.1 - SYN Flood / Brute Force - BLOCKED
+[2026-05-09 15:05:19] 127.0.0.1 - SYN Flood / Brute Force - BLOCKED
+
+ATTACK COVERAGE
+----------------------------------------
+SSH Brute Force : PROTECTED
+FTP Brute Force : PROTECTED
+DDoS : PROTECTED
+DoS Hulk : PROTECTED
+DoS GoldenEye : PROTECTED
+DoS Slowloris : PROTECTED
+Port Scan : PROTECTED
+Web Attack XSS : PROTECTED
+Web Attack SQLi : PROTECTED
+Botnet : PROTECTED
+Heartbleed : PROTECTED
+
+Blocking method : iptables DROP rule
+Encryption      : Fernet AES-128-CBC
+
+=======================================================
+AEGIS v1.0 - University Research Project

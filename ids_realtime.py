@@ -1,0 +1,211 @@
+import os, time, joblib, subprocess, warnings
+import numpy as np
+warnings.filterwarnings('ignore')
+from collections import defaultdict
+from datetime import datetime
+from scapy.all import sniff, IP, TCP, UDP
+
+print("=" * 60)
+print("   AEGIS — REAL TIME DETECTION ENGINE v2")
+print("=" * 60)
+
+print("\n[1/3] Loading trained model...")
+model  = joblib.load('models/ids_model.pkl')
+scaler = joblib.load('models/ids_scaler.pkl')
+print("   Model loaded successfully")
+print("   Scaler loaded successfully")
+
+blocked_ips    = set()
+flow_tracker   = defaultdict(list)
+ip_syn_count   = defaultdict(int)
+ip_attempt_count = defaultdict(int)
+flow_count     = 0
+attack_count   = 0
+benign_count   = 0
+os.makedirs('logs', exist_ok=True)
+LOG_FILE = 'logs/alerts.txt'
+
+print("\n[2/3] Detection engine ready...")
+print("   SSH brute force detection : port 22")
+print("   FTP brute force detection : port 21")
+print("   SYN flood detection       : active")
+print("   ML model detection        : active")
+
+def block_ip(ip, reason):
+    if ip not in blocked_ips:
+        blocked_ips.add(ip)
+        if ip == '127.0.0.1':
+            print("  [INFO] Localhost detected — logging only, not blocking iptables")
+        else:
+            try:
+                subprocess.run(['sudo','iptables','-A','INPUT','-s',ip,'-j','DROP'], capture_output=True)
+            except:
+                pass
+        timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+        msg = timestamp + " [BLOCKED] " + ip + " Reason: " + reason
+        print("\n  *** " + msg + " ***")
+        with open(LOG_FILE, 'a') as f:
+            f.write(msg + '\n')
+
+def log_alert(src, dst, sport, dport, reason, confidence):
+    global attack_count
+    attack_count += 1
+    timestamp = datetime.now().strftime('%H:%M:%S')
+    print("\n  [ATTACK DETECTED] " + timestamp)
+    print("  From       : " + src + ":" + str(sport))
+    print("  To         : " + dst + ":" + str(dport))
+    print("  Reason     : " + reason)
+    print("  Confidence : " + str(confidence) + "%")
+    save_traffic(src, dst, sport, dport, "ATTACK", confidence)
+    block_ip(src, reason)
+    try:
+        from ids_email_alerts import send_alert_email
+        send_alert_email(src, reason, confidence, dport)
+    except Exception as e:
+        print("  [EMAIL] " + str(e))
+
+def extract_features(pkts):
+    try:
+        sizes  = [len(p) for p in pkts]
+        times  = [float(p.time) for p in pkts]
+        iats   = [times[i+1]-times[i] for i in range(len(times)-1)]
+        dur    = (times[-1]-times[0])*1e6
+        bwd    = pkts[1:]
+        bsizes = [len(p) for p in bwd]
+        syn = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x02)
+        ack = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x10)
+        fin = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x01)
+        psh = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x08)
+        rst = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x04)
+        urg = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x20)
+        ece = sum(1 for p in pkts if TCP in p and p[TCP].flags & 0x40)
+        f = [
+            dur, len(pkts), len(bwd),
+            sum(sizes), sum(bsizes) if bsizes else 0,
+            max(sizes), min(sizes),
+            float(np.mean(sizes)), float(np.std(sizes)) if len(sizes)>1 else 0,
+            float(np.mean(bsizes)) if bsizes else 0,
+            float(np.std(bsizes)) if len(bsizes)>1 else 0,
+            sum(sizes)/max(dur/1e6,0.001), len(pkts)/max(dur/1e6,0.001),
+            float(np.mean(iats))*1e6 if iats else 0,
+            float(np.std(iats))*1e6 if len(iats)>1 else 0,
+            float(np.min(iats))*1e6 if iats else 0,
+            float(np.max(iats))*1e6 if iats else 0,
+            float(np.mean(iats))*1e6 if iats else 0,
+            float(np.std(iats))*1e6 if len(iats)>1 else 0,
+            float(np.min(iats))*1e6 if iats else 0,
+            float(np.max(iats))*1e6 if iats else 0,
+            syn, ack, fin, psh, rst, urg,
+            syn/max(len(pkts),1), ack/max(len(pkts),1),
+            pkts[0][TCP].window if TCP in pkts[0] else 0,
+            pkts[1][TCP].window if len(pkts)>1 and TCP in pkts[1] else 0,
+            float(np.mean(sizes)), len(pkts)/max(len(pkts),1),
+            len(bwd)/max(len(pkts),1), sum(sizes)/max(len(pkts),1),
+            float(np.mean(sizes)), float(np.min(sizes)),
+            float(np.max(sizes)), float(np.std(sizes)) if len(sizes)>1 else 0,
+            ece,
+        ]
+        while len(f) < 77:
+            f.append(0.0)
+        return f[:77]
+    except:
+        return None
+
+import json
+
+TRAFFIC_FILE = "logs/live_traffic.json"
+traffic_log = []
+
+def save_traffic(src, dst, sport, dport, status, confidence):
+    global traffic_log
+    entry = {
+        "time": datetime.now().strftime("%H:%M:%S"),
+        "src": src,
+        "dst": dst,
+        "sport": sport,
+        "dport": dport,
+        "status": status,
+        "confidence": confidence
+    }
+    traffic_log.append(entry)
+    if len(traffic_log) > 50:
+        traffic_log = traffic_log[-50:]
+    try:
+        with open(TRAFFIC_FILE, "w") as f:
+            json.dump(traffic_log, f)
+    except:
+        pass
+
+def analyze_packet(packet):
+    global flow_count, benign_count
+    if IP not in packet:
+        return
+    src = packet[IP].src
+    dst = packet[IP].dst
+    if TCP in packet:
+        sport = packet[TCP].sport
+        dport = packet[TCP].dport
+        flags = packet[TCP].flags
+        if flags & 0x02 and not flags & 0x10:
+            ip_syn_count[src] += 1
+            if dport in [22, 21]:
+                ip_attempt_count[src] += 1
+            if ip_syn_count[src] > 15 and src not in blocked_ips:
+                log_alert(src, dst, sport, dport, "SYN Flood / Brute Force", round(ip_syn_count[src]/20*100,1))
+                return
+        if dport == 22:
+            ip_attempt_count[src] += 1
+            if ip_attempt_count[src] > 8 and src not in blocked_ips:
+                log_alert(src, dst, sport, dport, "SSH Brute Force (port 22)", min(ip_attempt_count[src]*10,99))
+                return
+        if dport == 21:
+            ip_attempt_count[src] += 1
+            if ip_attempt_count[src] > 8 and src not in blocked_ips:
+                log_alert(src, dst, sport, dport, "FTP Brute Force (port 21)", min(ip_attempt_count[src]*10,99))
+                return
+    elif UDP in packet:
+        sport = packet[UDP].sport
+        dport = packet[UDP].dport
+    else:
+        return
+
+    key = src+"-"+dst+"-"+str(sport)+"-"+str(dport)
+    flow_tracker[key].append(packet)
+    if len(flow_tracker[key]) >= 5:
+        features = extract_features(flow_tracker[key])
+        del flow_tracker[key]
+        if features:
+            try:
+                scaled     = scaler.transform([features])
+                prediction = model.predict(scaled)[0]
+                proba      = model.predict_proba(scaled)[0]
+                confidence = round(max(proba)*100,1)
+                flow_count += 1
+                if prediction == 1 and src not in blocked_ips:
+                    log_alert(src, dst, sport, dport, "ML Model Detection", confidence)
+                else:
+                    benign_count += 1
+
+                save_traffic(src, dst, sport, dport, "BENIGN", confidence)
+                if flow_count % 10 == 0:
+                    print("  [BENIGN] "+src+" -> "+dst+" | "+str(confidence)+"% | Flows: "+str(flow_count)+" Attacks: "+str(attack_count)+" Blocked: "+str(len(blocked_ips)))
+            except:
+                pass
+
+print("\n[3/3] Starting packet capture...")
+print("   Press Ctrl+C to stop")
+print("-" * 60)
+
+try:
+    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface="lo")
+except KeyboardInterrupt:
+    print("\n" + "="*60)
+    print("   DETECTION STOPPED")
+    print("="*60)
+    print("   Total flows  : " + str(flow_count))
+    print("   Attacks      : " + str(attack_count))
+    print("   Blocked IPs  : " + str(len(blocked_ips)))
+    if blocked_ips:
+        for ip in blocked_ips:
+            print("     - " + ip)
+    print("="*60)

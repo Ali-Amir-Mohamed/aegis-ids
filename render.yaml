@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: aegis-ids
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python dashboard.py
+    envVars:
+      - key: PORT
+        value: 5000

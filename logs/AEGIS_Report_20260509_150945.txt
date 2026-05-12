@@ -1,0 +1,78 @@
+=======================================================
+  AEGIS - AI INTRUSION DETECTION SYSTEM
+  Security Report
+  Generated: 2026-05-09 15:09:45
+=======================================================
+
+MODEL PERFORMANCE
+----------------------------------------
+Algorithm        : Random Forest (100 trees)
+Dataset          : CIC-IDS2017 - 2,313,810 rows
+Accuracy         : 99.88%
+ROC-AUC          : 1.0000
+Cross-Val F1     : 0.9985 (5-fold)
+False Alarm Rate : 0.0713%
+Miss Rate        : 0.4101%
+Features used    : 77 network flow features
+Training time    : 277.7 seconds
+
+DETECTION SUMMARY
+----------------------------------------
+Total flows monitored : 160
+Attacks detected      : 5
+IPs blocked           : 5
+
+ATTACK LOG
+----------------------------------------
+[2026-05-06 09:48:25] 127.0.0.1 - SSH Brute Force (port 22) - BLOCKED
+[2026-05-07 15:20:11] 127.0.0.1 - SSH Brute Force (port 22) - BLOCKED
+[2026-05-09 14:13:48] 127.0.0.1 - SYN Flood / Brute Force - BLOCKED
+[2026-05-09 14:59:51] 127.0.0.1 - SYN Flood / Brute Force - BLOCKED
+[2026-05-09 15:05:19] 127.0.0.1 - SYN Flood / Brute Force - BLOCKED
+
+ATTACK COVERAGE
+----------------------------------------
+SSH Brute Force (port 22) : PROTECTED
+FTP Brute Force (port 21) : PROTECTED
+DDoS (LOIC tool) : PROTECTED
+DoS Hulk : PROTECTED
+DoS GoldenEye : PROTECTED
+DoS Slowloris : PROTECTED
+DoS Slowhttptest : PROTECTED
+Port Scan (Nmap) : PROTECTED
+Web Attack XSS : PROTECTED
+Web Attack SQL Injection : PROTECTED
+Web Attack Brute Force : PROTECTED
+Botnet (ARES) : PROTECTED
+Heartbleed : PROTECTED
+Infiltration : PROTECTED
+
+CROSS VALIDATION RESULTS
+----------------------------------------
+Fold 1 F1-Score : 0.9994
+Fold 2 F1-Score : 0.9994
+Fold 3 F1-Score : 0.9994
+Fold 4 F1-Score : 0.9950
+Fold 5 F1-Score : 0.9989
+Average F1      : 0.9985
+Std Deviation   : 0.0017
+Conclusion      : Model is RELIABLE
+
+RESPONSE TIME
+----------------------------------------
+Average latency : 58.5 ms
+Min latency     : 38.1 ms
+Sub-50ms        : Achievable on dedicated hardware
+
+SYSTEM INFO
+----------------------------------------
+Blocking method : iptables DROP rule
+Log encryption  : Fernet AES-128-CBC
+Dashboard       : Flask + login authentication
+Platform        : Ubuntu Linux (VirtualBox)
+
+=======================================================
+AEGIS v1.0 - University Research Project
+AI Intrusion Detection System
+CIC-IDS2017 Dataset | Random Forest Classifier
+=======================================================
