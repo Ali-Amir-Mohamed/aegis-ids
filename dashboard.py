@@ -193,7 +193,7 @@ input:focus{border-color:#6366f1}
   </form>
   <div class="hint">Username: admin &nbsp;|&nbsp; Password: aegis2026</div>
 </div>
-<meta http-equiv="refresh" content="5"></body></html>"""
+</body></html>"""
 
 DASH_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -469,7 +469,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   <div class="fr">{{ now }}</div>
 </footer>
 
-<meta http-equiv="refresh" content="5"></body></html>"""
+<meta http-equiv="refresh" content="5">
+</body></html>"""
 
 if __name__ == "__main__":
     os.makedirs("logs", exist_ok=True)
