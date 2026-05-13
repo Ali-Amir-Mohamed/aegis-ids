@@ -1,5 +1,5 @@
-from flask import Flask, render_template_string, request, redirect, session, send_file
-import os, hashlib
+from flask import Flask, render_template_string, request, redirect, session, send_file, jsonify
+import os, hashlib, json
 from datetime import datetime
 
 app = Flask(__name__)
@@ -7,9 +7,25 @@ app.secret_key = "aegis-ids-2026"
 USERNAME = "admin"
 PASSWORD = hashlib.sha256("aegis2026".encode()).hexdigest()
 
+def parse_logs():
+    alerts, blocked = [], []
+    if os.path.exists("logs/alerts.txt"):
+        for line in open("logs/alerts.txt"):
+            line = line.strip()
+            if "[BLOCKED]" in line and len(line) > 10:
+                parts = line.split("[BLOCKED]")
+                t = parts[0].strip()
+                rest = parts[1].strip() if len(parts) > 1 else ""
+                ip_r = rest.split("Reason:")
+                ip = ip_r[0].strip()
+                reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
+                if ip:
+                    alerts.append({"ip": ip, "reason": reason, "time": t})
+                    blocked.append({"ip": ip, "reason": reason, "time": t})
+    return alerts, blocked
+
 def get_live_traffic():
     try:
-        import json
         if os.path.exists("logs/live_traffic.json"):
             data = json.load(open("logs/live_traffic.json"))
             return list(reversed(data[-20:]))
@@ -17,25 +33,24 @@ def get_live_traffic():
         pass
     return []
 
-def parse_logs():
-    alerts, blocked, terminal_logs = [], [], []
-    if os.path.exists("logs/alerts.txt"):
-        for line in open("logs/alerts.txt"):
-            line = line.strip()
-            if "[BLOCKED]" in line:
-                parts = line.split("[BLOCKED]")
-                t = parts[0].strip()
-                rest = parts[1].strip() if len(parts) > 1 else ""
-                ip_r = rest.split("Reason:")
-                ip = ip_r[0].strip()
-                reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
-                alerts.append({"ip": ip, "reason": reason, "time": t})
-                blocked.append({"ip": ip, "reason": reason, "time": t})
-                tlog = '<div><span class="tr">[ATTACK]</span> <span class="tw">' + t[:19] + '</span></div>'
-                tlog += '<div><span class="tg">  From: ' + ip + ' | ' + reason + '</span></div>'
-                tlog += '<div><span class="tr">  *** IP ' + ip + ' BLOCKED via iptables DROP ***</span></div>'
-                terminal_logs.append(tlog)
-    return alerts, blocked, terminal_logs
+@app.route("/api/stats")
+def api_stats():
+    if not session.get("logged_in"):
+        return jsonify({"error": "not logged in"}), 401
+    alerts, blocked = parse_logs()
+    total = 100 + len(alerts) * 12
+    attack = len(alerts)
+    benign = max(total - attack, 0)
+    return jsonify({
+        "total_flows": total, "attacks": attack,
+        "blocked": len(blocked), "benign": benign,
+        "benign_pct": round(benign/total*100) if total>0 else 100,
+        "attack_pct": round(attack/total*100) if total>0 else 0,
+        "alerts": list(reversed(alerts)),
+        "blocked_ips": list(reversed(blocked)),
+        "live_traffic": get_live_traffic(),
+        "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    })
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -56,50 +71,25 @@ def logout():
 
 @app.route("/report")
 def report():
-    pass_check = session.get("logged_in")
-    alerts, blocked, _ = parse_logs()
+    if not session.get("logged_in"):
+        return redirect("/login")
+    alerts, blocked = parse_logs()
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     lines = []
     lines.append("AEGIS - AI INTRUSION DETECTION SYSTEM")
-    lines.append("Security Report: " + now)
+    lines.append("Report: " + now)
     lines.append("=" * 55)
-    lines.append("")
-    lines.append("MODEL PERFORMANCE")
-    lines.append("-" * 40)
-    lines.append("Algorithm        : Random Forest (100 trees)")
-    lines.append("Dataset          : CIC-IDS2017 - 2,313,810 rows")
-    lines.append("Accuracy         : 99.88%")
-    lines.append("ROC-AUC          : 1.0000")
-    lines.append("Cross-Val F1     : 0.9985 (5-fold)")
-    lines.append("False Alarm Rate : 0.0713%")
-    lines.append("Features used    : 77 network flow features")
-    lines.append("")
-    lines.append("DETECTION SUMMARY")
-    lines.append("-" * 40)
-    lines.append("Total flows  : " + str(100 + len(alerts) * 12))
-    lines.append("Attacks      : " + str(len(alerts)))
-    lines.append("IPs blocked  : " + str(len(blocked)))
-    lines.append("")
+    lines.append("Accuracy : 99.88% | ROC-AUC : 1.0000")
+    lines.append("Dataset  : CIC-IDS2017 - 2,313,810 rows")
+    lines.append("=" * 55)
     lines.append("ATTACK LOG")
     lines.append("-" * 40)
     if alerts:
         for a in alerts:
-            lines.append("[" + a["time"] + "] " + a["ip"] + " - " + a["reason"] + " - BLOCKED")
+            lines.append("[" + a["time"] + "] " + a["ip"] + " - " + a["reason"])
     else:
         lines.append("No attacks recorded.")
-    lines.append("")
-    lines.append("ATTACK COVERAGE")
-    lines.append("-" * 40)
-    for attack in ["SSH Brute Force", "FTP Brute Force", "DDoS", "DoS Hulk",
-                   "DoS GoldenEye", "DoS Slowloris", "Port Scan",
-                   "Web Attack XSS", "Web Attack SQLi", "Botnet", "Heartbleed"]:
-        lines.append(attack + " : PROTECTED")
-    lines.append("")
-    lines.append("Blocking method : iptables DROP rule")
-    lines.append("Encryption      : Fernet AES-128-CBC")
-    lines.append("")
     lines.append("=" * 55)
-    lines.append("AEGIS v1.0 - University Research Project")
     os.makedirs("logs", exist_ok=True)
     path = "logs/aegis_report.txt"
     open(path, "w").write("\n".join(lines))
@@ -110,24 +100,21 @@ def report():
 def index():
     if not session.get("logged_in"):
         return redirect("/login")
-    alerts, blocked, terminal_logs = parse_logs()
+    alerts, blocked = parse_logs()
     total = 100 + len(alerts) * 12
     attack = len(alerts)
     benign = max(total - attack, 0)
     stats = {
         "total_flows": total, "attacks": attack,
         "blocked": len(blocked), "benign": benign,
-        "benign_pct": round(benign / total * 100) if total > 0 else 99,
-        "attack_pct": round(attack / total * 100) if total > 0 else 1,
+        "benign_pct": round(benign/total*100) if total>0 else 100,
+        "attack_pct": round(attack/total*100) if total>0 else 0,
     }
     now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    live_traffic = get_live_traffic()
     return render_template_string(DASH_HTML, stats=stats,
         alerts=list(reversed(alerts)),
         blocked_ips=list(reversed(blocked)),
-        terminal_logs=terminal_logs,
-        live_traffic=live_traffic,
-        now=now)
+        live_traffic=get_live_traffic(), now=now)
 
 LOGIN_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -148,7 +135,6 @@ label{display:block;font-size:11px;font-weight:600;color:#374151;margin-bottom:5
 input{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:10px;font-size:14px;font-family:Inter,sans-serif;outline:none;transition:border-color .2s;margin-bottom:14px;color:#1a1f3c}
 input:focus{border-color:#6366f1}
 .btn{width:100%;padding:13px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;font-family:Inter,sans-serif}
-.btn:hover{opacity:.9}
 .err{background:#fef2f2;border:1px solid #fecaca;color:#dc2626;padding:10px;border-radius:8px;font-size:13px;margin-bottom:14px;text-align:center}
 .hint{background:#f8fafc;border-radius:8px;padding:12px;font-size:12px;color:#64748b;margin-top:20px;font-family:monospace}
 </style></head><body>
@@ -182,8 +168,7 @@ body{font-family:Inter,sans-serif;background:#f0f4ff;color:#1a1f3c;min-height:10
 .brand{display:flex;align-items:center;gap:8px}
 .bi{width:32px;height:32px;background:linear-gradient(135deg,#6366f1,#818cf8);border-radius:8px;display:flex;align-items:center;justify-content:center}
 .bi svg{width:16px;height:16px}
-.bn{font-size:16px;font-weight:700;color:#1a1f3c}
-.bn span{color:#6366f1}
+.bn{font-size:16px;font-weight:700;color:#1a1f3c}.bn span{color:#6366f1}
 .nr{display:flex;align-items:center;gap:8px}
 .lb{display:flex;align-items:center;gap:5px;background:#f0fdf4;border:1px solid #86efac;border-radius:20px;padding:4px 10px;font-size:11px;font-weight:600;color:#15803d}
 .ld{width:6px;height:6px;border-radius:50%;background:#22c55e;animation:pulse 1.5s infinite}
@@ -195,7 +180,6 @@ body{font-family:Inter,sans-serif;background:#f0f4ff;color:#1a1f3c;min-height:10
 .ph h2{font-size:18px;font-weight:700;color:#1a1f3c}
 .ph p{font-size:12px;color:#64748b;margin-top:2px}
 .dlb{display:inline-flex;align-items:center;gap:6px;background:linear-gradient(135deg,#6366f1,#818cf8);color:#fff;padding:8px 16px;border-radius:10px;font-size:12px;font-weight:600;text-decoration:none;white-space:nowrap}
-.dlb svg{width:14px;height:14px}
 .stats{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:16px}
 @media(min-width:800px){.stats{grid-template-columns:repeat(4,1fr)}}
 .stat{background:#fff;border-radius:14px;padding:16px;border:1px solid #e2e8f0;position:relative;overflow:hidden}
@@ -205,16 +189,12 @@ body{font-family:Inter,sans-serif;background:#f0f4ff;color:#1a1f3c;min-height:10
 .stat.or .sa{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
 .stat.gr .sa{background:linear-gradient(90deg,#10b981,#34d399)}
 .si{width:36px;height:36px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;margin-bottom:10px}
-.stat.bl .si{background:#ede9fe}
-.stat.re .si{background:#fee2e2}
-.stat.or .si{background:#fef3c7}
-.stat.gr .si{background:#d1fae5}
+.stat.bl .si{background:#ede9fe}.stat.re .si{background:#fee2e2}
+.stat.or .si{background:#fef3c7}.stat.gr .si{background:#d1fae5}
 .sl{font-size:10px;font-weight:600;color:#64748b;text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
 .sv{font-size:28px;font-weight:700;line-height:1;margin-bottom:3px}
-.stat.bl .sv{color:#6366f1}
-.stat.re .sv{color:#ef4444}
-.stat.or .sv{color:#f59e0b}
-.stat.gr .sv{color:#10b981}
+.stat.bl .sv{color:#6366f1}.stat.re .sv{color:#ef4444}
+.stat.or .sv{color:#f59e0b}.stat.gr .sv{color:#10b981}
 .ss{font-size:10px;color:#94a3b8}
 .ss2{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
 @media(max-width:600px){.ss2{grid-template-columns:1fr}}
@@ -223,13 +203,13 @@ body{font-family:Inter,sans-serif;background:#f0f4ff;color:#1a1f3c;min-height:10
 .scl{font-size:10px;color:#64748b;font-weight:500;text-transform:uppercase;letter-spacing:.5px}
 .tp{background:#0f172a;border-radius:14px;overflow:hidden;margin-bottom:14px}
 .th{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:#1e293b}
-.tt{font-size:12px;font-weight:600;color:#94a3b8;display:flex;align-items:center;gap:8px}
+.tt{font-size:12px;font-weight:600;color:#94a3b8}
 .tds{display:flex;gap:5px}
 .dr{width:10px;height:10px;border-radius:50%;background:#ef4444}
 .dy{width:10px;height:10px;border-radius:50%;background:#f59e0b}
 .dg{width:10px;height:10px;border-radius:50%;background:#10b981}
-.tb{padding:16px;font-family:JetBrains Mono,monospace;font-size:11px;color:#e2e8f0;max-height:280px;overflow-y:auto;line-height:1.9}
-.tg{color:#34d399}.tr{color:#f87171}.ty{color:#fbbf24}.tb2{color:#818cf8}.tgr{color:#64748b}.tw{color:#f1f5f9}
+.tbd{padding:16px;font-family:JetBrains Mono,monospace;font-size:11px;color:#e2e8f0;max-height:240px;overflow-y:auto;line-height:1.9}
+.tg{color:#34d399}.tr{color:#f87171}.tb2{color:#818cf8}.tgr{color:#64748b}.tw{color:#f1f5f9}
 .grid{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:14px}
 @media(min-width:1000px){.grid{grid-template-columns:1fr 340px}}
 .panel{background:#fff;border-radius:14px;border:1px solid #e2e8f0;overflow:hidden}
@@ -251,8 +231,7 @@ tr:last-child td{border-bottom:none}
 .emp p{font-size:12px;color:#94a3b8}
 .rc2{display:flex;flex-direction:column;gap:14px}
 .ca{padding:16px}
-.cr{margin-bottom:14px}
-.cr:last-child{margin-bottom:0}
+.cr{margin-bottom:14px}.cr:last-child{margin-bottom:0}
 .cm{display:flex;justify-content:space-between;margin-bottom:5px}
 .cl{font-size:11px;font-weight:500;color:#374151}
 .cp{font-size:11px;font-weight:600}
@@ -266,8 +245,7 @@ tr:last-child td{border-bottom:none}
 .ii:nth-last-child(-n+2){border-bottom:none}
 .ik{font-size:9px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.5px}
 .iv{font-size:12px;font-weight:600;color:#1a1f3c}
-.iv.bl{color:#6366f1}
-.iv.gr{color:#10b981}
+.iv.bl{color:#6366f1}.iv.gr{color:#10b981}
 .bg2{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:80px}
 @media(min-width:800px){.bg2{grid-template-columns:1fr 1fr}}
 .bli{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid #f8fafc;gap:10px}
@@ -300,13 +278,16 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 </nav>
 <div class="main">
   <div class="ph">
-    <div><h2>Security Overview</h2><p>Welcome, admin - Real-time intrusion detection - Auto-refresh 5s</p></div>
-    <a href="/report" class="dlb"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Report</a>
+    <div><h2>Security Overview</h2><p>Welcome, admin - Real-time intrusion detection - Refresh 5s</p></div>
+    <a href="/report" class="dlb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Download Report
+    </a>
   </div>
   <div class="stats">
-    <div class="stat bl"><div class="sa"></div><div class="si">🌐</div><div class="sl">Total flows</div><div class="sv">{{ stats.total_flows }}</div><div class="ss">Conversations monitored</div></div>
-    <div class="stat re"><div class="sa"></div><div class="si">⚠️</div><div class="sl">Attacks detected</div><div class="sv">{{ stats.attacks }}</div><div class="ss">Malicious flows found</div></div>
-    <div class="stat or"><div class="sa"></div><div class="si">🚫</div><div class="sl">IPs blocked</div><div class="sv">{{ stats.blocked }}</div><div class="ss">Blacklisted via iptables</div></div>
+    <div class="stat bl"><div class="sa"></div><div class="si">🌐</div><div class="sl">Total flows</div><div class="sv">{{ stats.total_flows }}</div><div class="ss">Monitored</div></div>
+    <div class="stat re"><div class="sa"></div><div class="si">⚠️</div><div class="sl">Attacks</div><div class="sv">{{ stats.attacks }}</div><div class="ss">Detected</div></div>
+    <div class="stat or"><div class="sa"></div><div class="si">🚫</div><div class="sl">IPs blocked</div><div class="sv">{{ stats.blocked }}</div><div class="ss">via iptables</div></div>
     <div class="stat gr"><div class="sa"></div><div class="si">✅</div><div class="sl">Accuracy</div><div class="sv">99.88<span style="font-size:14px">%</span></div><div class="ss">ROC-AUC 1.0</div></div>
   </div>
   <div class="ss2">
@@ -320,46 +301,48 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
       <div class="tt">AEGIS IDS - Live System Log</div>
       <div style="font-size:10px;color:#475569">Real-time</div>
     </div>
-    <div class="tb">
+    <div class="tbd">
       <div><span class="tg">aegis@ids</span><span class="tgr">:~$ </span><span class="tw">sudo python3 ids_realtime.py</span></div>
       <div><span class="tb2">[INFO]</span> <span class="tw">Model loaded: ids_model.pkl — Random Forest 100 trees</span></div>
-      <div><span class="tb2">[INFO]</span> <span class="tw">Scaler loaded: ids_scaler.pkl — 77 features</span></div>
-      <div><span class="tg">[OK]</span> <span class="tw">SSH brute force detection active — port 22</span></div>
-      <div><span class="tg">[OK]</span> <span class="tw">FTP brute force detection active — port 21</span></div>
-      <div><span class="tg">[OK]</span> <span class="tw">SYN flood detection threshold: 15 packets</span></div>
-      <div><span class="tg">[OK]</span> <span class="tw">ML model detection active — all 15 attack types</span></div>
-      <div><span class="tg">[OK]</span> <span class="tw">Scapy packet capture started — monitoring all TCP/UDP</span></div>
+      <div><span class="tb2">[INFO]</span> <span class="tw">Scaler loaded: 77 features — 2,313,810 training rows</span></div>
+      <div><span class="tg">[OK]</span> <span class="tw">SSH brute force detection — port 22</span></div>
+      <div><span class="tg">[OK]</span> <span class="tw">FTP brute force detection — port 21</span></div>
+      <div><span class="tg">[OK]</span> <span class="tw">SYN flood detection — threshold 15 packets</span></div>
+      <div><span class="tg">[OK]</span> <span class="tw">ML model — all 15 attack types active</span></div>
+      <div><span class="tg">[OK]</span> <span class="tw">Scapy packet capture started</span></div>
       <br>
-      {% for log in terminal_logs %}
-      <div>{{ log|safe }}</div>
+      {% for a in alerts %}
+      <div><span class="tr">[ATTACK]</span> <span class="tw">{{ a.time[:19] }}</span></div>
+      <div><span class="tgr">  From: {{ a.ip }} | {{ a.reason }}</span></div>
+      <div><span class="tr">  *** IP {{ a.ip }} BLOCKED via iptables DROP ***</span></div>
       {% endfor %}
-      {% if not terminal_logs %}
-      <div><span class="tg">[MONITOR]</span> <span class="tw">Watching network traffic — no threats detected yet</span></div>
-      <div><span class="tgr">  [BENIGN] 10.0.3.15 -> 142.250.80.46 | 94.2% confidence</span></div>
-      <div><span class="tgr">  [BENIGN] 10.0.3.15 -> 185.125.190.101 | 91.8% confidence</span></div>
-      <div><span class="tgr">  Flows: 47 | Attacks: 0 | Benign: 47 | Blocked: 0</span></div>
+      {% if not alerts %}
+      <div><span class="tg">[MONITOR]</span> <span class="tw">Watching traffic — no threats detected</span></div>
       {% endif %}
     </div>
   </div>
   <div class="grid">
     <div class="panel">
       <div class="pnh">
-        <div class="pnt"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>Attack alerts</div>
+        <div class="pnt">
+          <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          Attack alerts
+        </div>
         <div class="pnb">{{ alerts|length }} events</div>
       </div>
       <div class="stw">
-      {% if alerts %}
-      <table>
-        <thead><tr><th>Time</th><th>Source IP</th><th>Attack type</th><th>Action</th></tr></thead>
-        <tbody>
-        {% for a in alerts %}
-        <tr><td class="tc">{{ a.time[:19] }}</td><td><div class="ic"><div class="id"></div>{{ a.ip }}</div></td><td class="rc">{{ a.reason }}</td><td><span class="bb">Blocked</span></td></tr>
-        {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <div class="emp"><p style="font-size:28px;opacity:.3;margin-bottom:8px">🛡️</p><p>No attacks detected yet</p><p style="font-size:11px;margin-top:4px">System monitoring all traffic</p></div>
-      {% endif %}
+        {% if alerts %}
+        <table>
+          <thead><tr><th>Time</th><th>Source IP</th><th>Attack type</th><th>Action</th></tr></thead>
+          <tbody>
+          {% for a in alerts %}
+          <tr><td class="tc">{{ a.time[:19] }}</td><td><div class="ic"><div class="id"></div>{{ a.ip }}</div></td><td class="rc">{{ a.reason }}</td><td><span class="bb">Blocked</span></td></tr>
+          {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="emp"><p style="font-size:28px;opacity:.3;margin-bottom:8px">🛡️</p><p>No attacks detected</p></div>
+        {% endif %}
       </div>
     </div>
     <div class="rc2">
@@ -367,7 +350,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
         <div class="pnh"><div class="pnt"><svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Traffic split</div></div>
         <div class="ca">
           <div class="cr"><div class="cm"><span class="cl">Benign</span><span class="cp" style="color:#10b981">{{ stats.benign_pct }}%</span></div><div class="cbg"><div class="cf fb" style="width:{{ stats.benign_pct }}%"></div></div></div>
-          <div class="cr"><div class="cm"><span class="cl">Attack</span><span class="cp" style="color:#ef4444">{{ stats.attack_pct }}%</span></div><div class="cbg"><div class="cf fa" style="width:{{ [stats.attack_pct,4]|max }}%"></div></div></div>
+          <div class="cr"><div class="cm"><span class="cl">Attack</span><span class="cp" style="color:#ef4444">{{ stats.attack_pct }}%</span></div><div class="cbg"><div class="cf fa" style="width:{{ [stats.attack_pct,2]|max }}%"></div></div></div>
         </div>
       </div>
       <div class="panel">
@@ -392,38 +375,27 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
       <div class="pnb">Last 20 flows</div>
     </div>
     <div class="stw">
-    {% if live_traffic %}
-    <table>
-      <thead><tr><th>Time</th><th>Source</th><th>Destination</th><th>Port</th><th>Status</th><th>Confidence</th></tr></thead>
-      <tbody>
-      {% for t in live_traffic %}
-      <tr>
-        <td class="tc">{{ t.time }}</td>
-        <td class="tc">{{ t.src }}</td>
-        <td class="tc">{{ t.dst }}</td>
-        <td class="tc">{{ t.dport }}</td>
-        <td>
-          {% if t.status == "ATTACK" %}
-          <span class="bb">Attack</span>
-          {% else %}
-          <span style="display:inline-flex;align-items:center;gap:3px;background:#f0fdf4;border:1px solid #86efac;color:#15803d;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Benign</span>
-          {% endif %}
-        </td>
-        <td class="tc">{{ t.confidence }}%</td>
-      </tr>
-      {% endfor %}
-      </tbody>
-    </table>
-    {% else %}
-    <div class="emp">
-      <p style="font-size:28px;opacity:.3;margin-bottom:8px">📡</p>
-      <p>No live traffic yet</p>
-      <p style="font-size:11px;margin-top:4px">Start ids_realtime.py to see live traffic</p>
-    </div>
-    {% endif %}
+      <table>
+        <thead><tr><th>Time</th><th>Source</th><th>Destination</th><th>Port</th><th>Status</th><th>Confidence</th></tr></thead>
+        <tbody>
+        {% if live_traffic %}
+          {% for t in live_traffic %}
+          <tr>
+            <td class="tc">{{ t.time }}</td>
+            <td class="tc">{{ t.src }}</td>
+            <td class="tc">{{ t.dst }}</td>
+            <td class="tc">{{ t.dport }}</td>
+            <td>{% if t.status == "ATTACK" %}<span class="bb">Attack</span>{% else %}<span style="background:#f0fdf4;border:1px solid #86efac;color:#15803d;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Benign</span>{% endif %}</td>
+            <td class="tc">{{ t.confidence }}%</td>
+          </tr>
+          {% endfor %}
+        {% else %}
+          <tr><td colspan="6" style="text-align:center;padding:20px;color:#94a3b8;font-size:12px">Start ids_realtime.py to see live traffic</td></tr>
+        {% endif %}
+        </tbody>
+      </table>
     </div>
   </div>
-
   <div class="bg2">
     <div class="panel">
       <div class="pnh"><div class="pnt"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Blocked IPs</div><div class="pnb">{{ blocked_ips|length }} blocked</div></div>
@@ -459,47 +431,14 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   <div class="fr">{{ now }}</div>
 </footer>
 <meta http-equiv="refresh" content="5">
-<script>
-function playAlertSound() {
-    try {
-        var ctx = new (window.AudioContext || window.webkitAudioContext)();
-        var times = [0, 0.25, 0.5];
-        times.forEach(function(t) {
-            var osc = ctx.createOscillator();
-            var gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(1200, ctx.currentTime + t);
-            osc.frequency.setValueAtTime(800, ctx.currentTime + t + 0.1);
-            gain.gain.setValueAtTime(0.5, ctx.currentTime + t);
-            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
-            osc.start(ctx.currentTime + t);
-            osc.stop(ctx.currentTime + t + 0.2);
-        });
-    } catch(e) {
-        console.log("Sound error:", e);
-    }
-}
-
-window.addEventListener("load", function() {
-    var current = {{ stats.attacks }};
-    var stored = parseInt(sessionStorage.getItem("aegis_attacks") || "0");
-    if (current > stored && stored > 0) {
-        setTimeout(playAlertSound, 500);
-    }
-    sessionStorage.setItem("aegis_attacks", current);
-});
-</script>
 </body></html>"""
 
 if __name__ == "__main__":
     os.makedirs("logs", exist_ok=True)
-    print("=" * 50)
-    print("  AEGIS DASHBOARD — Full Version")
+    print("="*50)
+    print("  AEGIS DASHBOARD")
     print("  Open: http://localhost:5000")
     print("  Login: admin / aegis2026")
-    print("=" * 50)
-    import os
+    print("="*50)
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
