@@ -4,34 +4,72 @@ from datetime import datetime
 
 app = Flask(__name__)
 app.secret_key = "aegis-ids-2026"
+app.config["SESSION_TYPE"] = "filesystem"
+app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["PERMANENT_SESSION_LIFETIME"] = 3600
 USERNAME = "admin"
 PASSWORD = hashlib.sha256("aegis2026".encode()).hexdigest()
 
+
+
+
+
+
 def parse_logs():
     alerts, blocked = [], []
-    if os.path.exists("logs/alerts.txt"):
-        for line in open("logs/alerts.txt"):
-            line = line.strip()
-            if "[BLOCKED]" in line and len(line) > 10:
-                parts = line.split("[BLOCKED]")
-                t = parts[0].strip()
-                rest = parts[1].strip() if len(parts) > 1 else ""
-                ip_r = rest.split("Reason:")
-                ip = ip_r[0].strip()
-                reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
-                if ip:
-                    alerts.append({"ip": ip, "reason": reason, "time": t})
-                    blocked.append({"ip": ip, "reason": reason, "time": t})
+    try:
+        
+        for row in rows:
+            alerts.append({"time": row[0], "ip": row[1], "reason": row[2]})
+            blocked.append({"time": row[0], "ip": row[1], "reason": row[2]})
+    except:
+        pass
+    if not alerts:
+        if os.path.exists("logs/alerts.txt"):
+            for line in open("logs/alerts.txt"):
+                line = line.strip()
+                if "[BLOCKED]" in line and len(line) > 10:
+                    parts = line.split("[BLOCKED]")
+                    t = parts[0].strip()
+                    rest = parts[1].strip() if len(parts) > 1 else ""
+                    ip_r = rest.split("Reason:")
+                    ip = ip_r[0].strip()
+                    reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
+                    if ip:
+                        alerts.append({"ip": ip, "reason": reason, "time": t})
+                        blocked.append({"ip": ip, "reason": reason, "time": t})
     return alerts, blocked
 
 def get_live_traffic():
     try:
+        
+        return [{"time": r[0], "src": r[1], "dst": r[2], "dport": r[3], "status": r[4], "confidence": r[5]} for r in rows]
+    except:
+        pass
+    try:
         if os.path.exists("logs/live_traffic.json"):
+            import json
             data = json.load(open("logs/live_traffic.json"))
             return list(reversed(data[-20:]))
     except:
         pass
     return []
+
+
+CLOUD_DATA = {"alerts": [], "traffic": [], "timestamp": ""}
+SYNC_SECRET = "aegis-sync-secret-2026"
+
+@app.route("/ingest", methods=["POST"])
+def ingest():
+    global CLOUD_DATA
+    data = request.get_json()
+    if data and data.get("secret") == SYNC_SECRET:
+        CLOUD_DATA["alerts"] = data.get("alerts", [])
+        CLOUD_DATA["traffic"] = data.get("traffic", [])
+        CLOUD_DATA["timestamp"] = data.get("timestamp", "")
+        return jsonify({"status": "ok"})
+    return jsonify({"error": "unauthorized"}), 401
 
 @app.route("/api/stats")
 def api_stats():
@@ -155,7 +193,7 @@ input:focus{border-color:#6366f1}
   </form>
   <div class="hint">Username: admin &nbsp;|&nbsp; Password: aegis2026</div>
 </div>
-</body></html>"""
+<meta http-equiv="refresh" content="5"></body></html>"""
 
 DASH_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -430,8 +468,8 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   <div class="fl"><span class="ft">AEGIS v1.0</span><span class="fs">·</span><span>CIC-IDS2017</span><span class="fs">·</span><span>Random Forest</span><span class="fs">·</span><span>Auto-refresh 5s</span></div>
   <div class="fr">{{ now }}</div>
 </footer>
-<meta http-equiv="refresh" content="5">
-</body></html>"""
+
+<meta http-equiv="refresh" content="5"></body></html>"""
 
 if __name__ == "__main__":
     os.makedirs("logs", exist_ok=True)

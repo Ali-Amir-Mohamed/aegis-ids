@@ -147,6 +147,8 @@ def analyze_packet(packet):
         dport = packet[TCP].dport
         flags = packet[TCP].flags
         if flags & 0x02 and not flags & 0x10:
+            if dport in [5000, 80, 443]:
+                return
             ip_syn_count[src] += 1
             if dport in [22, 21]:
                 ip_attempt_count[src] += 1
