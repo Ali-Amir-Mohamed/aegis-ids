@@ -5,6 +5,7 @@ import time
 from datetime import datetime
 
 RENDER_URL = "https://aegis-ids.onrender.com/ingest"
+RENDER_HOME = "https://aegis-ids.onrender.com/"
 SECRET = "aegis-sync-secret-2026"
 
 def sync():
@@ -32,11 +33,20 @@ def sync():
             "timestamp": datetime.now().isoformat()
         }
         r = requests.post(RENDER_URL, json=data, timeout=15)
-        print("[SYNC] " + datetime.now().strftime("%H:%M:%S") + " status=" + str(r.status_code) + " alerts=" + str(len(alerts)) + " traffic=" + str(len(traffic)))
+        now = datetime.now().strftime("%H:%M:%S")
+        print("[SYNC] " + now + " status=" + str(r.status_code) + " alerts=" + str(len(alerts)) + " traffic=" + str(len(traffic)))
     except Exception as e:
         print("[SYNC ERROR] " + str(e))
 
-print("Cloud sync started - sending every 30 seconds")
+def ping():
+    try:
+        requests.get(RENDER_HOME, timeout=10)
+    except:
+        pass
+
+print("Cloud sync started - syncing every 25 seconds")
+counter = 0
 while True:
     sync()
-    time.sleep(30)
+    counter += 1
+    time.sleep(25)
