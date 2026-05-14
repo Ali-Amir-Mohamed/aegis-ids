@@ -32,10 +32,11 @@ def sync():
             "timestamp": datetime.now().isoformat()
         }
         r = requests.post(RENDER_URL, json=data, timeout=15)
-        print("[SYNC] " + datetime.now().strftime("%H:%M:%S") + " status=" + str(r.status_code))
+        print("[SYNC] " + datetime.now().strftime("%H:%M:%S") + " status=" + str(r.status_code) + " alerts=" + str(len(alerts)) + " traffic=" + str(len(traffic)))
     except Exception as e:
         print("[SYNC ERROR] " + str(e))
 
+print("Cloud sync started - sending every 30 seconds")
 while True:
     sync()
-    time.sleep(10)
+    time.sleep(30)
