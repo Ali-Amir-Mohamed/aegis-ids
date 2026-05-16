@@ -4,8 +4,7 @@ import os
 import time
 from datetime import datetime
 
-RENDER_URL = "https://aegis-ids.onrender.com/ingest"
-RENDER_HOME = "https://aegis-ids.onrender.com/"
+AWS_URL = "http://13.51.158.81:5000/ingest"
 SECRET = "aegis-sync-secret-2026"
 
 def sync():
@@ -32,21 +31,12 @@ def sync():
             "traffic": traffic[-20:],
             "timestamp": datetime.now().isoformat()
         }
-        r = requests.post(RENDER_URL, json=data, timeout=15)
-        now = datetime.now().strftime("%H:%M:%S")
-        print("[SYNC] " + now + " status=" + str(r.status_code) + " alerts=" + str(len(alerts)) + " traffic=" + str(len(traffic)))
+        r = requests.post(AWS_URL, json=data, timeout=5)
+        print("[SYNC] " + datetime.now().strftime("%H:%M:%S") + " status=" + str(r.status_code) + " traffic=" + str(len(traffic)))
     except Exception as e:
         print("[SYNC ERROR] " + str(e))
 
-def ping():
-    try:
-        requests.get(RENDER_HOME, timeout=10)
-    except:
-        pass
-
-print("Cloud sync started - syncing every 25 seconds")
-counter = 0
+print("Real-time sync started - every 3 seconds")
 while True:
     sync()
-    counter += 1
-    time.sleep(25)
+    time.sleep(3)
