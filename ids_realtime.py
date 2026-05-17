@@ -199,7 +199,7 @@ print("   Press Ctrl+C to stop")
 print("-" * 60)
 
 try:
-    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface="lo")
+    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface="enp0s3")
 except KeyboardInterrupt:
     print("\n" + "="*60)
     print("   DETECTION STOPPED")
