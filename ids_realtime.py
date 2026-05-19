@@ -6,7 +6,7 @@ from datetime import datetime
 from scapy.all import sniff, IP, TCP, UDP
 
 print("=" * 60)
-print("   AEGIS — REAL TIME DETECTION ENGINE v2")
+print("   AEGIS — REAL TIME DETECTION ENGINE v3")
 print("=" * 60)
 
 print("\n[1/3] Loading trained model...")
@@ -15,13 +15,14 @@ scaler = joblib.load('models/ids_scaler.pkl')
 print("   Model loaded successfully")
 print("   Scaler loaded successfully")
 
-blocked_ips    = set()
-flow_tracker   = defaultdict(list)
-ip_syn_count   = defaultdict(int)
-ip_attempt_count = defaultdict(int)
-flow_count     = 0
-attack_count   = 0
-benign_count   = 0
+blocked_ips       = set()
+flow_tracker      = defaultdict(list)
+ip_syn_count      = defaultdict(int)
+ip_ssh_count      = defaultdict(int)   # SEPARATE counter for SSH
+ip_ftp_count      = defaultdict(int)   # SEPARATE counter for FTP
+flow_count        = 0
+attack_count      = 0
+benign_count      = 0
 os.makedirs('logs', exist_ok=True)
 LOG_FILE = 'logs/alerts.txt'
 
@@ -35,7 +36,7 @@ def block_ip(ip, reason):
     if ip not in blocked_ips:
         blocked_ips.add(ip)
         if ip == '127.0.0.1':
-            print("  [INFO] Localhost detected — logging only, not blocking iptables")
+            print("  [INFO] Localhost — logging only, not blocking iptables")
         else:
             try:
                 subprocess.run(['sudo','iptables','-A','INPUT','-s',ip,'-j','DROP'], capture_output=True)
@@ -112,7 +113,6 @@ def extract_features(pkts):
         return None
 
 import json
-
 TRAFFIC_FILE = "logs/live_traffic.json"
 traffic_log = []
 
@@ -120,12 +120,9 @@ def save_traffic(src, dst, sport, dport, status, confidence):
     global traffic_log
     entry = {
         "time": datetime.now().strftime("%H:%M:%S"),
-        "src": src,
-        "dst": dst,
-        "sport": sport,
-        "dport": dport,
-        "status": status,
-        "confidence": confidence
+        "src": src, "dst": dst,
+        "sport": sport, "dport": dport,
+        "status": status, "confidence": confidence
     }
     traffic_log.append(entry)
     if len(traffic_log) > 50:
@@ -142,29 +139,36 @@ def analyze_packet(packet):
         return
     src = packet[IP].src
     dst = packet[IP].dst
+
     if TCP in packet:
         sport = packet[TCP].sport
         dport = packet[TCP].dport
         flags = packet[TCP].flags
+
+        # --- SSH BRUTE FORCE (check BEFORE SYN flood, use separate counter) ---
+        if dport == 22:
+            ip_ssh_count[src] += 1
+            print("  [DEBUG] SSH packet from " + src + " count=" + str(ip_ssh_count[src]))
+            if ip_ssh_count[src] > 3 and src not in blocked_ips:
+                log_alert(src, dst, sport, dport, "SSH Brute Force (port 22)", min(ip_ssh_count[src]*10, 99))
+                return
+
+        # --- FTP BRUTE FORCE ---
+        elif dport == 21:
+            ip_ftp_count[src] += 1
+            if ip_ftp_count[src] > 3 and src not in blocked_ips:
+                log_alert(src, dst, sport, dport, "FTP Brute Force (port 21)", min(ip_ftp_count[src]*10, 99))
+                return
+
+        # --- SYN FLOOD (skip dashboard/web ports) ---
         if flags & 0x02 and not flags & 0x10:
             if dport in [5000, 80, 443]:
                 return
             ip_syn_count[src] += 1
-            if dport in [22, 21]:
-                ip_attempt_count[src] += 1
             if ip_syn_count[src] > 15 and src not in blocked_ips:
-                log_alert(src, dst, sport, dport, "SYN Flood / Brute Force", round(ip_syn_count[src]/20*100,1))
+                log_alert(src, dst, sport, dport, "SYN Flood", round(ip_syn_count[src]/20*100, 1))
                 return
-        if dport == 22:
-            ip_attempt_count[src] += 1
-            if ip_attempt_count[src] > 8 and src not in blocked_ips:
-                log_alert(src, dst, sport, dport, "SSH Brute Force (port 22)", min(ip_attempt_count[src]*10,99))
-                return
-        if dport == 21:
-            ip_attempt_count[src] += 1
-            if ip_attempt_count[src] > 8 and src not in blocked_ips:
-                log_alert(src, dst, sport, dport, "FTP Brute Force (port 21)", min(ip_attempt_count[src]*10,99))
-                return
+
     elif UDP in packet:
         sport = packet[UDP].sport
         dport = packet[UDP].dport
@@ -181,13 +185,12 @@ def analyze_packet(packet):
                 scaled     = scaler.transform([features])
                 prediction = model.predict(scaled)[0]
                 proba      = model.predict_proba(scaled)[0]
-                confidence = round(max(proba)*100,1)
+                confidence = round(max(proba)*100, 1)
                 flow_count += 1
                 if prediction == 1 and src not in blocked_ips:
                     log_alert(src, dst, sport, dport, "ML Model Detection", confidence)
                 else:
                     benign_count += 1
-
                 save_traffic(src, dst, sport, dport, "BENIGN", confidence)
                 if flow_count % 10 == 0:
                     print("  [BENIGN] "+src+" -> "+dst+" | "+str(confidence)+"% | Flows: "+str(flow_count)+" Attacks: "+str(attack_count)+" Blocked: "+str(len(blocked_ips)))
@@ -197,17 +200,7 @@ def analyze_packet(packet):
 print("\n[3/3] Starting packet capture...")
 print("   Press Ctrl+C to stop")
 print("-" * 60)
-
 try:
-    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=__import__("subprocess").check_output("ip route | grep default | awk '{print $5}' | head -1", shell=True).decode().strip() or "enp0s3")
+    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=["lo","enp0s3"])
 except KeyboardInterrupt:
-    print("\n" + "="*60)
-    print("   DETECTION STOPPED")
-    print("="*60)
-    print("   Total flows  : " + str(flow_count))
-    print("   Attacks      : " + str(attack_count))
-    print("   Blocked IPs  : " + str(len(blocked_ips)))
-    if blocked_ips:
-        for ip in blocked_ips:
-            print("     - " + ip)
-    print("="*60)
+    print("\n[INFO] Detection stopped.")
