@@ -1,3 +1,7 @@
+import warnings
+warnings.filterwarnings("ignore")
+import os
+os.environ["PYTHONWARNINGS"] = "ignore"
 import os, time, joblib, subprocess, warnings
 import numpy as np
 warnings.filterwarnings('ignore')
