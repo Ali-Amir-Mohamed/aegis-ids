@@ -211,6 +211,32 @@ input:focus{border-color:#6366f1}
   </form>
   <div class="hint">Username: admin &nbsp;|&nbsp; Password: aegis2026</div>
 </div>
+
+<meta http-equiv="refresh" content="5">
+<script>
+function playSound(){
+    try{
+        var ctx=new(window.AudioContext||window.webkitAudioContext)();
+        [0,0.3,0.6].forEach(function(t){
+            var o=ctx.createOscillator(),g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.type="sine";o.frequency.value=1200;
+            g.gain.setValueAtTime(0.4,ctx.currentTime+t);
+            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.2);
+            o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.25);
+        });
+    }catch(e){}
+}
+window.onload=function(){
+    var cur=parseInt("{{ stats.attacks if stats is defined else 0 }}");
+    var stored=parseInt(sessionStorage.getItem("atk")||"-1");
+    if(cur>stored && stored>=0){
+        playSound();
+    }
+    sessionStorage.setItem("atk",cur);
+};
+</script>
+<meta http-equiv="refresh" content="5">
 </body></html>"""
 
 DASH_HTML = """<!DOCTYPE html>
@@ -389,10 +415,10 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
       <div class="stw">
         {% if alerts %}
         <table>
-          <thead><tr><th>Time</th><th>Source IP</th><th>Attack type</th><th>Action</th></tr></thead>
+          <thead><tr><th>Time</th><th>Source IP</th><th>Location</th><th>Protocol</th><th>Attack type</th><th>Action</th></tr></thead>
           <tbody>
           {% for a in alerts %}
-          <tr><td class="tc">{{ a.time[:19] }}</td><td><div class="ic"><div class="id"></div>{{ a.ip }}</div></td><td class="rc">{{ a.reason }}</td><td><span class="bb">Blocked</span></td></tr>
+          <tr><td class="tc">{{ a.time[:19] }}</td><td><div class="ic"><div class="id"></div>{{ a.ip }}</div></td><td class="tc">{{ a.location if a.location else "Unknown" }}</td><td>{% if "SSH" in a.reason %}<span style="background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">SSH</span>{% elif "FTP" in a.reason %}<span style="background:#fef3c7;border:1px solid #fbbf24;color:#92400e;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">FTP</span>{% elif "SQL" in a.reason %}<span style="background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">HTTP</span>{% elif "Nikto" in a.reason or "Vulnerability" in a.reason %}<span style="background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">HTTP</span>{% elif "GoldenEye" in a.reason or "Slowloris" in a.reason or "HTTP" in a.reason %}<span style="background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">HTTP</span>{% elif "SYN" in a.reason or "Flood" in a.reason %}<span style="background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">TCP</span>{% elif "Scan" in a.reason %}<span style="background:#f3f4f6;border:1px solid #d1d5db;color:#374151;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">TCP</span>{% else %}<span style="background:#d1fae5;border:1px solid #6ee7b7;color:#065f46;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">TCP</span>{% endif %}</td><td class="rc">{{ a.reason }}</td><td><span class="bb">Blocked</span></td></tr>
           {% endfor %}
           </tbody>
         </table>
@@ -487,6 +513,32 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   <div class="fr">{{ now }}</div>
 </footer>
 
+<meta http-equiv="refresh" content="5">
+
+<meta http-equiv="refresh" content="5">
+<script>
+function playSound(){
+    try{
+        var ctx=new(window.AudioContext||window.webkitAudioContext)();
+        [0,0.3,0.6].forEach(function(t){
+            var o=ctx.createOscillator(),g=ctx.createGain();
+            o.connect(g);g.connect(ctx.destination);
+            o.type="sine";o.frequency.value=1200;
+            g.gain.setValueAtTime(0.4,ctx.currentTime+t);
+            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.2);
+            o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.25);
+        });
+    }catch(e){}
+}
+window.onload=function(){
+    var cur=parseInt("{{ stats.attacks if stats is defined else 0 }}");
+    var stored=parseInt(sessionStorage.getItem("atk")||"-1");
+    if(cur>stored && stored>=0){
+        playSound();
+    }
+    sessionStorage.setItem("atk",cur);
+};
+</script>
 <meta http-equiv="refresh" content="5">
 </body></html>"""
 

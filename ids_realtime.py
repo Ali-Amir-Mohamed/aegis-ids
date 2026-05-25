@@ -22,6 +22,7 @@ print("   Scaler loaded successfully")
 blocked_ips       = set()
 flow_tracker      = defaultdict(list)
 ip_syn_count      = defaultdict(int)
+ip_http_count     = defaultdict(int)   # HTTP flood counter
 ip_ssh_count      = defaultdict(int)   # SEPARATE counter for SSH
 ip_ftp_count      = defaultdict(int)   # SEPARATE counter for FTP
 flow_count        = 0
@@ -37,7 +38,7 @@ print("   SYN flood detection       : active")
 print("   ML model detection        : active")
 
 def block_ip(ip, reason):
-    if ip not in blocked_ips:
+    if ip not in blocked_ips and ip != "10.0.2.15":
         blocked_ips.add(ip)
         if ip == '127.0.0.1':
             print("  [INFO] Localhost — logging only, not blocking iptables")
@@ -63,11 +64,13 @@ def log_alert(src, dst, sport, dport, reason, confidence):
     print("  Confidence : " + str(confidence) + "%")
     save_traffic(src, dst, sport, dport, "ATTACK", confidence)
     block_ip(src, reason)
-    try:
-        from ids_email_alerts import send_alert_email
-        send_alert_email(src, reason, confidence, dport)
-    except Exception as e:
-        print("  [EMAIL] " + str(e))
+    if src not in alerted_ips:
+        alerted_ips.add(src)
+        try:
+            from ids_email_alerts import send_alert_email
+            send_alert_email(src, reason, confidence, dport)
+        except Exception as e:
+            print("  [EMAIL] " + str(e))
 
 def extract_features(pkts):
     try:
@@ -149,7 +152,39 @@ def analyze_packet(packet):
         dport = packet[TCP].dport
         flags = packet[TCP].flags
 
-        # --- SSH BRUTE FORCE (check BEFORE SYN flood, use separate counter) ---
+        # --- DEEP PACKET INSPECTION (identify tool by signature) ---
+        if dport in [5000, 80, 8080]:
+            if src not in ["127.0.0.1", "10.0.2.15", "192.168.56.103"]:
+                try:
+                    payload = bytes(packet[TCP].payload).decode("utf-8", errors="ignore")
+                except:
+                    payload = ""
+                attack_name = None
+                if "Nikto" in payload or "nikto" in payload:
+                    attack_name = "Web Vulnerability Scan (Nikto)"
+                elif "sqlmap" in payload or "UNION SELECT" in payload or "OR 1=1" in payload or "AND 1=1" in payload or "benchmark(" in payload.lower() or "sleep(" in payload.lower():
+                    attack_name = "SQL Injection Attack (SQLMap)"
+                elif "GoldenEye" in payload or "goldeneye" in payload:
+                    attack_name = "DoS GoldenEye Attack"
+                elif "slowloris" in payload.lower():
+                    attack_name = "DoS Slowloris Attack"
+                ip_http_count[src] += 1
+                if attack_name and src not in blocked_ips:
+                    log_alert(src, dst, sport, dport, attack_name, 95)
+                    return
+                if ip_http_count[src] > 100 and src not in blocked_ips:
+                    log_alert(src, dst, sport, dport, "HTTP Flood / DoS Attack", min(round(ip_http_count[src]/200*100, 1), 99))
+                    return
+
+        # --- SYN FLOOD (runs first, all ports) ---
+        if flags & 0x02 and not flags & 0x10:
+            if dport not in [5000, 587, 465, 25]:
+                ip_syn_count[src] += 1
+                if ip_syn_count[src] > 15 and src not in blocked_ips:
+                    log_alert(src, dst, sport, dport, "SYN Flood", round(ip_syn_count[src]/20*100, 1))
+                    return
+
+        # --- SSH BRUTE FORCE ---
         if dport == 22:
             ip_ssh_count[src] += 1
             print("  [DEBUG] SSH packet from " + src + " count=" + str(ip_ssh_count[src]))
@@ -162,15 +197,6 @@ def analyze_packet(packet):
             ip_ftp_count[src] += 1
             if ip_ftp_count[src] > 3 and src not in blocked_ips:
                 log_alert(src, dst, sport, dport, "FTP Brute Force (port 21)", min(ip_ftp_count[src]*10, 99))
-                return
-
-        # --- SYN FLOOD (skip dashboard/web ports) ---
-        if flags & 0x02 and not flags & 0x10:
-            if dport in [5000, 80, 443]:
-                return
-            ip_syn_count[src] += 1
-            if ip_syn_count[src] > 15 and src not in blocked_ips:
-                log_alert(src, dst, sport, dport, "SYN Flood", round(ip_syn_count[src]/20*100, 1))
                 return
 
     elif UDP in packet:
@@ -205,6 +231,10 @@ print("\n[3/3] Starting packet capture...")
 print("   Press Ctrl+C to stop")
 print("-" * 60)
 try:
-    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=["lo","enp0s3"])
+    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=["lo","enp0s3","enp0s8"])
 except KeyboardInterrupt:
     print("\n[INFO] Detection stopped.")
+
+# HTTP flood detection
+from collections import defaultdict
+ip_http_count = defaultdict(int)
