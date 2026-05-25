@@ -9,7 +9,7 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600
 USERNAME = "admin"
-PASSWORD = hashlib.sha256("aegis2026".encode()).hexdigest()
+PASSWORD = hashlib.sha256("X9k#mQ2@pL7".encode()).hexdigest()
 
 
 

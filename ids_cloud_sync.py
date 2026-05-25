@@ -32,7 +32,7 @@ def sync():
             "timestamp": datetime.now().isoformat()
         }
         r = requests.post(AWS_URL, json=data, timeout=5)
-        print("[SYNC] " + datetime.now().strftime("%H:%M:%S") + " status=" + str(r.status_code) + " traffic=" + str(len(traffic)))
+        print("[SYNC] " + datetime.now().strftime("%H:%M:%S") + " status=" + str(r.status_code) + " alerts=" + str(len(alerts)) + " traffic=" + str(len(traffic)) + " response=" + r.text)
     except Exception as e:
         print("[SYNC ERROR] " + str(e))
 
