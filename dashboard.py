@@ -319,8 +319,8 @@ setInterval(function(){
         var cl = document.getElementById('live-clock');
         if(cl) cl.innerHTML = d.now;
         var tables = document.querySelectorAll('table');
-        if(tables[0] && d.alerts && d.alerts.length > 0){
-            var tb = tables[0].querySelector('tbody');
+        if(tables[1] && d.alerts && d.alerts.length > 0){
+            var tb = tables[1].querySelector('tbody');
             if(tb) tb.innerHTML = d.alerts.map(function(a){
                 var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
                 if(a.reason&&a.reason.includes('SSH')){proto='SSH';ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;';}
@@ -329,8 +329,8 @@ setInterval(function(){
                 return '<tr><td class="tc">'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td class="tc">Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td class="rc">'+a.reason+'</td><td><span class="bb">Blocked</span></td></tr>';
             }).join('');
         }
-        if(tables[1] && d.live_traffic && d.live_traffic.length > 0 && d.live_traffic[0].time !== undefined){
-            var lt = tables[1].querySelector('tbody');
+        if(tables[0] && d.live_traffic && d.live_traffic.length > 0){
+            var lt = tables[0].querySelector('tbody');
             if(lt) lt.innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b=t.status==='ATTACK'?'<span class="ab">ATTACK</span>':'<span class="nb">BENIGN</span>';
                 return '<tr><td class="tc">'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td class="tc">'+t.confidence+'%</td></tr>';
@@ -664,8 +664,8 @@ setInterval(function(){
         var cl = document.getElementById('live-clock');
         if(cl) cl.innerHTML = d.now;
         var tables = document.querySelectorAll('table');
-        if(tables[0] && d.alerts && d.alerts.length > 0){
-            var tb = tables[0].querySelector('tbody');
+        if(tables[1] && d.alerts && d.alerts.length > 0){
+            var tb = tables[1].querySelector('tbody');
             if(tb) tb.innerHTML = d.alerts.map(function(a){
                 var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
                 if(a.reason&&a.reason.includes('SSH')){proto='SSH';ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;';}
@@ -674,8 +674,8 @@ setInterval(function(){
                 return '<tr><td class="tc">'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td class="tc">Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td class="rc">'+a.reason+'</td><td><span class="bb">Blocked</span></td></tr>';
             }).join('');
         }
-        if(tables[1] && d.live_traffic && d.live_traffic.length > 0 && d.live_traffic[0].time !== undefined){
-            var lt = tables[1].querySelector('tbody');
+        if(tables[0] && d.live_traffic && d.live_traffic.length > 0){
+            var lt = tables[0].querySelector('tbody');
             if(lt) lt.innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b=t.status==='ATTACK'?'<span class="ab">ATTACK</span>':'<span class="nb">BENIGN</span>';
                 return '<tr><td class="tc">'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td class="tc">'+t.confidence+'%</td></tr>';
