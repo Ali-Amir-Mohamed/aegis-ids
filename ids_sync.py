@@ -1,7 +1,7 @@
 import requests, json, os, time
 from datetime import datetime
 
-AWS_URL    = "http://13.51.158.81:5000/ingest"
+AWS_URL    = "https://aegis-ids-production.up.railway.app/ingest"
 SECRET     = "aegis-sync-secret-2026"
 ALERTS     = "logs/alerts.txt"
 TRAFFIC    = "logs/live_traffic.json"

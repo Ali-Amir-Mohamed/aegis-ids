@@ -93,7 +93,9 @@ def ingest():
 def api_stats():
     if not session.get("logged_in"):
         return jsonify({"error": "not logged in"}), 401
-    alerts, blocked = parse_logs()
+    alerts = CLOUD_DATA.get("alerts", [])
+    blocked = alerts
+    traffic = CLOUD_DATA.get("traffic", [])
     total = 100 + len(alerts) * 12
     attack = len(alerts)
     benign = max(total - attack, 0)
@@ -104,7 +106,7 @@ def api_stats():
         "attack_pct": round(attack/total*100) if total>0 else 0,
         "alerts": list(reversed(alerts)),
         "blocked_ips": list(reversed(blocked)),
-        "live_traffic": get_live_traffic(),
+        "live_traffic": list(reversed(traffic)),
         "now": datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     })
 
