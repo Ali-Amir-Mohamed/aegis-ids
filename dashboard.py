@@ -9,7 +9,7 @@ app.config["SEND_FILE_MAX_AGE_DEFAULT"] = 0
 app.config["SESSION_COOKIE_HTTPONLY"] = True
 app.config["PERMANENT_SESSION_LIFETIME"] = 3600
 USERNAME = "admin"
-PASSWORD = hashlib.sha256("X9k#mQ2@pL7".encode()).hexdigest()
+PASSWORD = hashlib.sha256("aegis123".encode()).hexdigest()
 
 
 
@@ -209,10 +209,8 @@ input:focus{border-color:#6366f1}
     <input type="password" name="password" placeholder="Enter password" required>
     <button type="submit" class="btn">Sign in to AEGIS</button>
   </form>
-  <div class="hint">Username: admin &nbsp;|&nbsp; Password: aegis2026</div>
+  <div class="hint">Username: admin &nbsp;|&nbsp; Password: aegis123</div>
 </div>
-
-<meta http-equiv="refresh" content="5">
 <script>
 function playSound(){
     try{
@@ -236,12 +234,23 @@ window.onload=function(){
     sessionStorage.setItem("atk",cur);
 };
 </script>
-<meta http-equiv="refresh" content="5">
-</body></html>"""
+<script>
+function updateClock(){
+    var now = new Date();
+    var s = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+    var el = document.getElementById('live-clock');
+    var el2 = document.getElementById('live-clock2');
+    if(el) el.innerHTML = s;
+    if(el2) el2.innerHTML = s;
+}
+setInterval(updateClock, 1000);
+updateClock();
+</script></body></html>"""
 
 DASH_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AEGIS Dashboard</title>
+<meta http-equiv="refresh" content="5">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
@@ -354,7 +363,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   </div>
   <div class="nr">
     <div class="lb"><div class="ld"></div>Live</div>
-    <div class="nt">{{ now }}</div>
+    <div class="nt" id="live-clock">{{ now }}</div>
     <a href="/logout" class="lo">Logout</a>
   </div>
 </nav>
@@ -510,12 +519,10 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
 </div>
 <footer>
   <div class="fl"><span class="ft">AEGIS v1.0</span><span class="fs">·</span><span>CIC-IDS2017</span><span class="fs">·</span><span>Random Forest</span><span class="fs">·</span><span>Auto-refresh 5s</span></div>
-  <div class="fr">{{ now }}</div>
+  <div class="fr" id="live-clock2">{{ now }}</div>
 </footer>
 
-<meta http-equiv="refresh" content="5">
 
-<meta http-equiv="refresh" content="5">
 <script>
 function playSound(){
     try{
@@ -539,8 +546,18 @@ window.onload=function(){
     sessionStorage.setItem("atk",cur);
 };
 </script>
-<meta http-equiv="refresh" content="5">
-</body></html>"""
+<script>
+function updateClock(){
+    var now = new Date();
+    var s = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
+    var el = document.getElementById('live-clock');
+    var el2 = document.getElementById('live-clock2');
+    if(el) el.innerHTML = s;
+    if(el2) el2.innerHTML = s;
+}
+setInterval(updateClock, 1000);
+updateClock();
+</script></body></html>"""
 
 if __name__ == "__main__":
     os.makedirs("logs", exist_ok=True)
