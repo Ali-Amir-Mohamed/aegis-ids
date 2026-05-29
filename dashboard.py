@@ -267,7 +267,7 @@ function updateDashboard(){
         if(cl2) cl2.innerHTML = d.now;
         // Update alerts table
         if(d.alerts && d.alerts.length > 0){
-            var tbody = document.querySelector('.at tbody');
+            var tbody = document.querySelectorAll('table')[0] ? document.querySelectorAll('table')[0].querySelector('tbody') : null;
             if(tbody){
                 tbody.innerHTML = d.alerts.map(function(a){
                     var proto = 'TCP';
@@ -281,7 +281,7 @@ function updateDashboard(){
         }
         // Update live traffic
         if(d.live_traffic && d.live_traffic.length > 0){
-            var ltbody = document.querySelector('.lt tbody');
+            var ltbody = document.querySelectorAll('table')[1] ? document.querySelectorAll('table')[1].querySelector('tbody') : null;
             if(ltbody){
                 ltbody.innerHTML = d.live_traffic.slice(0,20).map(function(t){
                     var badge = t.status === 'ATTACK' ? '<span class="ab">ATTACK</span>' : '<span class="nb">BENIGN</span>';
@@ -625,7 +625,7 @@ function updateDashboard(){
         if(cl2) cl2.innerHTML = d.now;
         // Update alerts table
         if(d.alerts && d.alerts.length > 0){
-            var tbody = document.querySelector('.at tbody');
+            var tbody = document.querySelectorAll('table')[0] ? document.querySelectorAll('table')[0].querySelector('tbody') : null;
             if(tbody){
                 tbody.innerHTML = d.alerts.map(function(a){
                     var proto = 'TCP';
@@ -639,7 +639,7 @@ function updateDashboard(){
         }
         // Update live traffic
         if(d.live_traffic && d.live_traffic.length > 0){
-            var ltbody = document.querySelector('.lt tbody');
+            var ltbody = document.querySelectorAll('table')[1] ? document.querySelectorAll('table')[1].querySelector('tbody') : null;
             if(ltbody){
                 ltbody.innerHTML = d.live_traffic.slice(0,20).map(function(t){
                     var badge = t.status === 'ATTACK' ? '<span class="ab">ATTACK</span>' : '<span class="nb">BENIGN</span>';
