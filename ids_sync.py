@@ -23,7 +23,10 @@ def sync():
 
         traffic = []
         if os.path.exists(TRAFFIC):
-            traffic = json.load(open(TRAFFIC))
+            from datetime import datetime
+            all_traffic = json.load(open(TRAFFIC))
+            now = datetime.now()
+            traffic = [t for t in all_traffic if True][-20:]
 
         payload = {
             "secret": SECRET,
