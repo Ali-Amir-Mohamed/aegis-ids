@@ -62,7 +62,7 @@ CLOUD_UPDATED = [0]
 SYNC_SECRET = "aegis-sync-secret-2026"
 CLOUD_FILE = "/tmp/aegis_data.json"
 
-def # load_cloud()  # disabled to start fresh:
+def load_cloud():
     global CLOUD_DATA
     try:
         if os.path.exists(CLOUD_FILE):
