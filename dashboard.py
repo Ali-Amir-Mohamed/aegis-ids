@@ -95,9 +95,27 @@ def ingest():
 def api_stats():
     if not session.get("logged_in"):
         return jsonify({"error": "not logged in"}), 401
-    alerts = CLOUD_DATA.get("alerts", [])
+    # Read from local files first, fallback to CLOUD_DATA
+    alerts = []
+    if __import__('os').path.exists('logs/alerts.txt'):
+        for line in open('logs/alerts.txt'):
+            line = line.strip()
+            if '[BLOCKED]' in line:
+                parts = line.split('[BLOCKED]')
+                t = parts[0].strip()
+                rest = parts[1].strip() if len(parts) > 1 else ''
+                ip_r = rest.split('Reason:')
+                ip = ip_r[0].strip()
+                reason = ip_r[1].strip() if len(ip_r) > 1 else 'Unknown'
+                alerts.append({'time': t, 'ip': ip, 'reason': reason})
+    if not alerts:
+        alerts = CLOUD_DATA.get("alerts", [])
     blocked = alerts
-    traffic = CLOUD_DATA.get("traffic", [])
+    traffic = []
+    if __import__('os').path.exists('logs/live_traffic.json'):
+        traffic = __import__('json').load(open('logs/live_traffic.json'))
+    if not traffic:
+        traffic = CLOUD_DATA.get("traffic", [])
     total = 100 + len(alerts) * 12
     attack = len(alerts)
     benign = max(total - attack, 0)
@@ -115,9 +133,27 @@ def api_stats():
 def api_live():
     if not session.get("logged_in"):
         return jsonify({"error": "not logged in"}), 401
-    alerts = CLOUD_DATA.get("alerts", [])
+    # Read from local files first, fallback to CLOUD_DATA
+    alerts = []
+    if __import__('os').path.exists('logs/alerts.txt'):
+        for line in open('logs/alerts.txt'):
+            line = line.strip()
+            if '[BLOCKED]' in line:
+                parts = line.split('[BLOCKED]')
+                t = parts[0].strip()
+                rest = parts[1].strip() if len(parts) > 1 else ''
+                ip_r = rest.split('Reason:')
+                ip = ip_r[0].strip()
+                reason = ip_r[1].strip() if len(ip_r) > 1 else 'Unknown'
+                alerts.append({'time': t, 'ip': ip, 'reason': reason})
+    if not alerts:
+        alerts = CLOUD_DATA.get("alerts", [])
     blocked = alerts
-    traffic = CLOUD_DATA.get("traffic", [])
+    traffic = []
+    if __import__('os').path.exists('logs/live_traffic.json'):
+        traffic = __import__('json').load(open('logs/live_traffic.json'))
+    if not traffic:
+        traffic = CLOUD_DATA.get("traffic", [])
     total = 100 + len(alerts) * 12
     attack = len(alerts)
     benign = max(total - attack, 0)
@@ -283,7 +319,7 @@ setInterval(function(){
         var cl = document.getElementById('live-clock');
         if(cl) cl.innerHTML = d.now;
         var tables = document.querySelectorAll('table');
-        if(tables[0] && d.alerts){
+        if(tables[0] && d.alerts && d.alerts.length > 0){
             var tb = tables[0].querySelector('tbody');
             if(tb) tb.innerHTML = d.alerts.map(function(a){
                 var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
@@ -293,7 +329,7 @@ setInterval(function(){
                 return '<tr><td class="tc">'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td class="tc">Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td class="rc">'+a.reason+'</td><td><span class="bb">Blocked</span></td></tr>';
             }).join('');
         }
-        if(tables[1] && d.live_traffic){
+        if(tables[1] && d.live_traffic && d.live_traffic.length > 0 && d.live_traffic[0].time !== undefined){
             var lt = tables[1].querySelector('tbody');
             if(lt) lt.innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b=t.status==='ATTACK'?'<span class="ab">ATTACK</span>':'<span class="nb">BENIGN</span>';
@@ -628,7 +664,7 @@ setInterval(function(){
         var cl = document.getElementById('live-clock');
         if(cl) cl.innerHTML = d.now;
         var tables = document.querySelectorAll('table');
-        if(tables[0] && d.alerts){
+        if(tables[0] && d.alerts && d.alerts.length > 0){
             var tb = tables[0].querySelector('tbody');
             if(tb) tb.innerHTML = d.alerts.map(function(a){
                 var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
@@ -638,7 +674,7 @@ setInterval(function(){
                 return '<tr><td class="tc">'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td class="tc">Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td class="rc">'+a.reason+'</td><td><span class="bb">Blocked</span></td></tr>';
             }).join('');
         }
-        if(tables[1] && d.live_traffic){
+        if(tables[1] && d.live_traffic && d.live_traffic.length > 0 && d.live_traffic[0].time !== undefined){
             var lt = tables[1].querySelector('tbody');
             if(lt) lt.innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b=t.status==='ATTACK'?'<span class="ab">ATTACK</span>':'<span class="nb">BENIGN</span>';
