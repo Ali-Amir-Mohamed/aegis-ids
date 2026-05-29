@@ -58,8 +58,9 @@ def get_live_traffic():
 
 
 CLOUD_DATA = {"alerts": [], "traffic": [], "timestamp": ""}
+CLOUD_UPDATED = [0]
 SYNC_SECRET = "aegis-sync-secret-2026"
-CLOUD_FILE = "/tmp/aegis_data.json"
+CLOUD_FILE = "aegis_data.json"
 
 def load_cloud():
     global CLOUD_DATA
@@ -85,6 +86,7 @@ def ingest():
         CLOUD_DATA["alerts"] = data.get("alerts", [])
         CLOUD_DATA["traffic"] = data.get("traffic", [])
         CLOUD_DATA["timestamp"] = data.get("timestamp", "")
+        CLOUD_UPDATED[0] = time.time()
         save_cloud()
         return jsonify({"status": "ok", "alerts": len(CLOUD_DATA["alerts"]), "traffic": len(CLOUD_DATA["traffic"])})
     return jsonify({"error": "unauthorized"}), 401
