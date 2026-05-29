@@ -233,8 +233,4 @@ print("-" * 60)
 try:
     sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=["lo","enp0s3","enp0s8"])
 except KeyboardInterrupt:
-    print("\n[INFO] Detection stopped.")
-
-# HTTP flood detection
-from collections import defaultdict
-ip_http_count = defaultdict(int)
+    print('\n[INFO] Detection stopped.')
