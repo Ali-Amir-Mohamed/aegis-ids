@@ -231,6 +231,6 @@ print("\n[3/3] Starting packet capture...")
 print("   Press Ctrl+C to stop")
 print("-" * 60)
 try:
-    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=["lo","enp0s3","enp0s8"])
+    sniff(prn=analyze_packet, store=False, filter="tcp or udp", iface=["lo","enp0s3","enp0s8","enp0s9"])
 except KeyboardInterrupt:
     print('\n[INFO] Detection stopped.')
