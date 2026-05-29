@@ -60,7 +60,7 @@ def get_live_traffic():
 CLOUD_DATA = {"alerts": [], "traffic": [], "timestamp": ""}
 CLOUD_UPDATED = [0]
 SYNC_SECRET = "aegis-sync-secret-2026"
-CLOUD_FILE = "/tmp/aegis_data.json"
+CLOUD_FILE = "/tmp/aegis_data_v2.json"
 
 def load_cloud():
     global CLOUD_DATA
