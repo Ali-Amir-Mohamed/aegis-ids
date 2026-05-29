@@ -254,7 +254,6 @@ function updateDashboard(){
     fetch('/api/stats')
     .then(r => r.json())
     .then(d => {
-        // Update stats
         var els = document.querySelectorAll('.scv');
         if(els.length >= 4){
             els[0].innerHTML = d.total_flows || 0;
@@ -262,41 +261,39 @@ function updateDashboard(){
             els[2].innerHTML = d.blocked || 0;
             els[3].innerHTML = (d.benign_pct || 100) + '%';
         }
-        // Update clock
         var cl = document.getElementById('live-clock');
-        var cl2 = document.getElementById('live-clock2');
         if(cl) cl.innerHTML = d.now;
+        var cl2 = document.getElementById('live-clock2');
         if(cl2) cl2.innerHTML = d.now;
-        // Update alerts table
-        if(d.alerts && d.alerts.length > 0){
-            var tbody = document.querySelectorAll('table')[0] ? document.querySelectorAll('table')[0].querySelector('tbody') : null;
+        var tables = document.querySelectorAll('table');
+        if(tables[0] && d.alerts && d.alerts.length > 0){
+            var tbody = tables[0].querySelector('tbody');
             if(tbody){
                 tbody.innerHTML = d.alerts.map(function(a){
-                    var proto = 'TCP';
-                    var pstyle = 'background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
+                    var proto = 'TCP'; var pstyle = 'background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
                     if(a.reason && a.reason.includes('SSH')){ proto='SSH'; pstyle='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;'; }
                     else if(a.reason && a.reason.includes('FTP')){ proto='FTP'; pstyle='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;'; }
-                    else if(a.reason && (a.reason.includes('HTTP') || a.reason.includes('SQL') || a.reason.includes('Nikto') || a.reason.includes('Web'))){ proto='HTTP'; pstyle='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
+                    else if(a.reason && (a.reason.includes('HTTP')||a.reason.includes('SQL')||a.reason.includes('Nikto')||a.reason.includes('Web'))){ proto='HTTP'; pstyle='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
                     return '<tr><td class="tc">'+(a.time||'').substring(0,19)+'</td><td><div class="ic"><div class="id"></div>'+a.ip+'</div></td><td class="tc">Unknown</td><td><span style="'+pstyle+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td class="rc">'+a.reason+'</td><td><span class="bb">Blocked</span></td></tr>';
                 }).join('');
             }
         }
-        // Update live traffic
-        if(d.live_traffic && d.live_traffic.length > 0){
-            var ltbody = document.querySelectorAll('table')[1] ? document.querySelectorAll('table')[1].querySelector('tbody') : null;
+        if(tables[1] && d.live_traffic && d.live_traffic.length > 0){
+            var ltbody = tables[1].querySelector('tbody');
             if(ltbody){
                 ltbody.innerHTML = d.live_traffic.slice(0,20).map(function(t){
-                    var badge = t.status === 'ATTACK' ? '<span class="ab">ATTACK</span>' : '<span class="nb">BENIGN</span>';
+                    var badge = t.status==='ATTACK' ? '<span class="ab">ATTACK</span>' : '<span class="nb">BENIGN</span>';
                     return '<tr><td class="tc">'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+badge+'</td><td class="tc">'+t.confidence+'%</td></tr>';
                 }).join('');
             }
         }
     })
-    .catch(function(e){ console.log('fetch error', e); });
+    .catch(function(e){ console.log('error', e); });
 }
 setInterval(updateDashboard, 3000);
 updateDashboard();
-</script></body></html>"""
+</script>
+</body></html>"""
 
 DASH_HTML = """<!DOCTYPE html>
 <html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -612,7 +609,6 @@ function updateDashboard(){
     fetch('/api/stats')
     .then(r => r.json())
     .then(d => {
-        // Update stats
         var els = document.querySelectorAll('.scv');
         if(els.length >= 4){
             els[0].innerHTML = d.total_flows || 0;
@@ -620,41 +616,39 @@ function updateDashboard(){
             els[2].innerHTML = d.blocked || 0;
             els[3].innerHTML = (d.benign_pct || 100) + '%';
         }
-        // Update clock
         var cl = document.getElementById('live-clock');
-        var cl2 = document.getElementById('live-clock2');
         if(cl) cl.innerHTML = d.now;
+        var cl2 = document.getElementById('live-clock2');
         if(cl2) cl2.innerHTML = d.now;
-        // Update alerts table
-        if(d.alerts && d.alerts.length > 0){
-            var tbody = document.querySelectorAll('table')[0] ? document.querySelectorAll('table')[0].querySelector('tbody') : null;
+        var tables = document.querySelectorAll('table');
+        if(tables[0] && d.alerts && d.alerts.length > 0){
+            var tbody = tables[0].querySelector('tbody');
             if(tbody){
                 tbody.innerHTML = d.alerts.map(function(a){
-                    var proto = 'TCP';
-                    var pstyle = 'background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
+                    var proto = 'TCP'; var pstyle = 'background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
                     if(a.reason && a.reason.includes('SSH')){ proto='SSH'; pstyle='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;'; }
                     else if(a.reason && a.reason.includes('FTP')){ proto='FTP'; pstyle='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;'; }
-                    else if(a.reason && (a.reason.includes('HTTP') || a.reason.includes('SQL') || a.reason.includes('Nikto') || a.reason.includes('Web'))){ proto='HTTP'; pstyle='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
+                    else if(a.reason && (a.reason.includes('HTTP')||a.reason.includes('SQL')||a.reason.includes('Nikto')||a.reason.includes('Web'))){ proto='HTTP'; pstyle='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
                     return '<tr><td class="tc">'+(a.time||'').substring(0,19)+'</td><td><div class="ic"><div class="id"></div>'+a.ip+'</div></td><td class="tc">Unknown</td><td><span style="'+pstyle+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td class="rc">'+a.reason+'</td><td><span class="bb">Blocked</span></td></tr>';
                 }).join('');
             }
         }
-        // Update live traffic
-        if(d.live_traffic && d.live_traffic.length > 0){
-            var ltbody = document.querySelectorAll('table')[1] ? document.querySelectorAll('table')[1].querySelector('tbody') : null;
+        if(tables[1] && d.live_traffic && d.live_traffic.length > 0){
+            var ltbody = tables[1].querySelector('tbody');
             if(ltbody){
                 ltbody.innerHTML = d.live_traffic.slice(0,20).map(function(t){
-                    var badge = t.status === 'ATTACK' ? '<span class="ab">ATTACK</span>' : '<span class="nb">BENIGN</span>';
+                    var badge = t.status==='ATTACK' ? '<span class="ab">ATTACK</span>' : '<span class="nb">BENIGN</span>';
                     return '<tr><td class="tc">'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+badge+'</td><td class="tc">'+t.confidence+'%</td></tr>';
                 }).join('');
             }
         }
     })
-    .catch(function(e){ console.log('fetch error', e); });
+    .catch(function(e){ console.log('error', e); });
 }
 setInterval(updateDashboard, 3000);
 updateDashboard();
-</script></body></html>"""
+</script>
+</body></html>"""
 
 if __name__ == "__main__":
     os.makedirs("logs", exist_ok=True)
