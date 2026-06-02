@@ -78,27 +78,29 @@ def ingest():
 def api_stats():
     if not session.get("logged_in"):
         return jsonify({"error": "not logged in"}), 401
-    # Read from local files first, fallback to CLOUD_DATA
-    alerts = []
-    if __import__('os').path.exists('logs/alerts.txt'):
-        for line in open('logs/alerts.txt'):
-            line = line.strip()
-            if '[BLOCKED]' in line:
-                parts = line.split('[BLOCKED]')
-                t = parts[0].strip()
-                rest = parts[1].strip() if len(parts) > 1 else ''
-                ip_r = rest.split('Reason:')
-                ip = ip_r[0].strip()
-                reason = ip_r[1].strip() if len(ip_r) > 1 else 'Unknown'
-                alerts.append({'time': t, 'ip': ip, 'reason': reason})
-    if not alerts:
+    # On Railway (cloud), use only data received via /ingest.
+    # On local VM, read the live capture files directly.
+    IS_CLOUD = os.environ.get("RAILWAY_ENVIRONMENT") is not None
+    if IS_CLOUD:
         alerts = CLOUD_DATA.get("alerts", [])
-    blocked = alerts
-    traffic = []
-    if __import__('os').path.exists('logs/live_traffic.json'):
-        traffic = __import__('json').load(open('logs/live_traffic.json'))
-    if not traffic:
         traffic = CLOUD_DATA.get("traffic", [])
+    else:
+        alerts = []
+        if os.path.exists("logs/alerts.txt"):
+            for line in open("logs/alerts.txt"):
+                line = line.strip()
+                if "[BLOCKED]" in line:
+                    parts = line.split("[BLOCKED]")
+                    t = parts[0].strip()
+                    rest = parts[1].strip() if len(parts) > 1 else ""
+                    ip_r = rest.split("Reason:")
+                    ip = ip_r[0].strip()
+                    reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
+                    alerts.append({"time": t, "ip": ip, "reason": reason})
+        traffic = []
+        if os.path.exists("logs/live_traffic.json"):
+            traffic = json.load(open("logs/live_traffic.json"))
+    blocked = alerts
     total = 100 + len(alerts) * 12
     attack = len(alerts)
     benign = max(total - attack, 0)
@@ -116,27 +118,29 @@ def api_stats():
 def api_live():
     if not session.get("logged_in"):
         return jsonify({"error": "not logged in"}), 401
-    # Read from local files first, fallback to CLOUD_DATA
-    alerts = []
-    if __import__('os').path.exists('logs/alerts.txt'):
-        for line in open('logs/alerts.txt'):
-            line = line.strip()
-            if '[BLOCKED]' in line:
-                parts = line.split('[BLOCKED]')
-                t = parts[0].strip()
-                rest = parts[1].strip() if len(parts) > 1 else ''
-                ip_r = rest.split('Reason:')
-                ip = ip_r[0].strip()
-                reason = ip_r[1].strip() if len(ip_r) > 1 else 'Unknown'
-                alerts.append({'time': t, 'ip': ip, 'reason': reason})
-    if not alerts:
+    # On Railway (cloud), use only data received via /ingest.
+    # On local VM, read the live capture files directly.
+    IS_CLOUD = os.environ.get("RAILWAY_ENVIRONMENT") is not None
+    if IS_CLOUD:
         alerts = CLOUD_DATA.get("alerts", [])
-    blocked = alerts
-    traffic = []
-    if __import__('os').path.exists('logs/live_traffic.json'):
-        traffic = __import__('json').load(open('logs/live_traffic.json'))
-    if not traffic:
         traffic = CLOUD_DATA.get("traffic", [])
+    else:
+        alerts = []
+        if os.path.exists("logs/alerts.txt"):
+            for line in open("logs/alerts.txt"):
+                line = line.strip()
+                if "[BLOCKED]" in line:
+                    parts = line.split("[BLOCKED]")
+                    t = parts[0].strip()
+                    rest = parts[1].strip() if len(parts) > 1 else ""
+                    ip_r = rest.split("Reason:")
+                    ip = ip_r[0].strip()
+                    reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
+                    alerts.append({"time": t, "ip": ip, "reason": reason})
+        traffic = []
+        if os.path.exists("logs/live_traffic.json"):
+            traffic = json.load(open("logs/live_traffic.json"))
+    blocked = alerts
     total = 100 + len(alerts) * 12
     attack = len(alerts)
     benign = max(total - attack, 0)
