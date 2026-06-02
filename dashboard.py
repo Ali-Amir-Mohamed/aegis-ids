@@ -257,70 +257,10 @@ input:focus{border-color:#6366f1}
   </form>
   <div class="hint">Username: admin &nbsp;|&nbsp; Password: aegis123</div>
 </div>
-<script>
-function playSound(){
-    try{
-        var ctx=new(window.AudioContext||window.webkitAudioContext)();
-        [0,0.3,0.6].forEach(function(t){
-            var o=ctx.createOscillator(),g=ctx.createGain();
-            o.connect(g);g.connect(ctx.destination);
-            o.type="sine";o.frequency.value=1200;
-            g.gain.setValueAtTime(0.4,ctx.currentTime+t);
-            g.gain.exponentialRampToValueAtTime(0.001,ctx.currentTime+t+0.2);
-            o.start(ctx.currentTime+t);o.stop(ctx.currentTime+t+0.25);
-        });
-    }catch(e){}
-}
-window.onload=function(){
-    var cur=parseInt("{{ stats.attacks if stats is defined else 0 }}");
-    var stored=parseInt(sessionStorage.getItem("atk")||"-1");
-    if(cur>stored && stored>=0){
-        playSound();
-    }
-    sessionStorage.setItem("atk",cur);
-};
-</script>
-<script>
-function updateClock(){
-    var now = new Date();
-    var s = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0')+' '+String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0')+':'+String(now.getSeconds()).padStart(2,'0');
-    var el = document.getElementById('live-clock');
-    var el2 = document.getElementById('live-clock2');
-    if(el) el.innerHTML = s;
-    if(el2) el2.innerHTML = s;
-}
-setInterval(updateClock, 1000);
-updateClock();
-</script>
 
-<script>
-setInterval(function(){
-    fetch('/api/stats', {credentials: 'include'})
-    .then(function(r){ return r.json(); })
-    .then(function(d){
-        var tables = document.querySelectorAll('table');
-        if(tables[0] && d.alerts && d.alerts.length > 0){
-            tables[0].querySelector('tbody').innerHTML = d.alerts.map(function(a){
-                var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
-                if(a.reason&&a.reason.includes('SSH')){proto='SSH';ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;';}
-                else if(a.reason&&a.reason.includes('FTP')){proto='FTP';ps='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;';}
-                else if(a.reason&&(a.reason.includes('HTTP')||a.reason.includes('SQL')||a.reason.includes('Nikto'))){proto='HTTP';ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;';}
-                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td>'+a.reason+'</td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span></td></tr>';
-            }).join('');
-        }
-        if(tables[1] && d.live_traffic && d.live_traffic.length > 0){
-            tables[1].querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
-                var b = t.status==='ATTACK' ? '<span style="color:red;font-weight:700;">ATTACK</span>' : '<span style="color:green;">BENIGN</span>';
-                return '<tr><td>'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td>'+t.confidence+'%</td></tr>';
-            }).join('');
-        }
-        var cl = document.getElementById('live-clock');
-        if(cl) cl.innerHTML = d.now;
-        var cl2 = document.getElementById('live-clock2');
-        if(cl2) cl2.innerHTML = d.now;
-    }).catch(function(e){ console.log('err',e); });
-}, 3000);
-</script>
+
+
+
 </body></html>"""
 
 DASH_HTML = """<!DOCTYPE html>
@@ -649,8 +589,9 @@ setInterval(function(){
                 return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td>'+a.reason+'</td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span></td></tr>';
             }).join('');
         }
-        if(tables[1] && d.live_traffic && d.live_traffic.length > 0){
-            tables[1].querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
+        var ltable = tables[1] || tables[0];
+        if(ltable && d.live_traffic && d.live_traffic.length > 0){
+            ltable.querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b = t.status==='ATTACK' ? '<span style="color:red;font-weight:700;">ATTACK</span>' : '<span style="color:green;">BENIGN</span>';
                 return '<tr><td>'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td>'+t.confidence+'%</td></tr>';
             }).join('');
