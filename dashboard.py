@@ -298,9 +298,18 @@ setInterval(function(){
     fetch('/api/stats', {credentials: 'include'})
     .then(function(r){ return r.json(); })
     .then(function(d){
-        var lt = document.querySelectorAll('table')[0];
-        if(lt && d.live_traffic && d.live_traffic.length > 0){
-            lt.querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
+        var tables = document.querySelectorAll('table');
+        if(tables[0] && d.alerts && d.alerts.length > 0){
+            tables[0].querySelector('tbody').innerHTML = d.alerts.map(function(a){
+                var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
+                if(a.reason&&a.reason.includes('SSH')){proto='SSH';ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;';}
+                else if(a.reason&&a.reason.includes('FTP')){proto='FTP';ps='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;';}
+                else if(a.reason&&(a.reason.includes('HTTP')||a.reason.includes('SQL')||a.reason.includes('Nikto'))){proto='HTTP';ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;';}
+                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td>'+a.reason+'</td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span></td></tr>';
+            }).join('');
+        }
+        if(tables[1] && d.live_traffic && d.live_traffic.length > 0){
+            tables[1].querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b = t.status==='ATTACK' ? '<span style="color:red;font-weight:700;">ATTACK</span>' : '<span style="color:green;">BENIGN</span>';
                 return '<tr><td>'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td>'+t.confidence+'%</td></tr>';
             }).join('');
@@ -630,9 +639,18 @@ setInterval(function(){
     fetch('/api/stats', {credentials: 'include'})
     .then(function(r){ return r.json(); })
     .then(function(d){
-        var lt = document.querySelectorAll('table')[0];
-        if(lt && d.live_traffic && d.live_traffic.length > 0){
-            lt.querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
+        var tables = document.querySelectorAll('table');
+        if(tables[0] && d.alerts && d.alerts.length > 0){
+            tables[0].querySelector('tbody').innerHTML = d.alerts.map(function(a){
+                var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
+                if(a.reason&&a.reason.includes('SSH')){proto='SSH';ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;';}
+                else if(a.reason&&a.reason.includes('FTP')){proto='FTP';ps='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;';}
+                else if(a.reason&&(a.reason.includes('HTTP')||a.reason.includes('SQL')||a.reason.includes('Nikto'))){proto='HTTP';ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;';}
+                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td>'+a.reason+'</td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span></td></tr>';
+            }).join('');
+        }
+        if(tables[1] && d.live_traffic && d.live_traffic.length > 0){
+            tables[1].querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b = t.status==='ATTACK' ? '<span style="color:red;font-weight:700;">ATTACK</span>' : '<span style="color:green;">BENIGN</span>';
                 return '<tr><td>'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td>'+t.confidence+'%</td></tr>';
             }).join('');

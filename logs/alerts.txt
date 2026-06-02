@@ -1,0 +1,1 @@
+2026-06-02 12:18:32 [BLOCKED] 192.168.56.107 Reason: SSH Brute Force (port 22)
