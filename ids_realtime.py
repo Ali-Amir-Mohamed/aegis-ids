@@ -132,8 +132,8 @@ def save_traffic(src, dst, sport, dport, status, confidence):
         "status": status, "confidence": confidence
     }
     traffic_log.append(entry)
-    if len(traffic_log) > 50:
-        traffic_log = traffic_log[-50:]
+    if len(traffic_log) > 20:
+        traffic_log = traffic_log[-20:]
     try:
         with open(TRAFFIC_FILE, "w") as f:
             json.dump(traffic_log, f)
