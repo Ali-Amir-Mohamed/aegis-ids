@@ -23,12 +23,8 @@ def sync():
 
         traffic = []
         if os.path.exists(TRAFFIC):
-            from datetime import datetime
             all_traffic = json.load(open(TRAFFIC))
-            now_str = datetime.now().strftime("%H:%M")
-            traffic = [t for t in all_traffic if t.get("time","")[:5] >= now_str[:3]+"00"][-20:]
-            if not traffic:
-                traffic = all_traffic[-5:]
+            traffic = all_traffic[-20:]
 
         payload = {
             "secret": SECRET,
