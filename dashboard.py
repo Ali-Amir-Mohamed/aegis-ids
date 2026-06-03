@@ -439,7 +439,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
       </div>
       <div class="stw">
         {% if alerts %}
-        <table>
+        <table id="alerts-table">
           <thead><tr><th>Time</th><th>Source IP</th><th>Location</th><th>Protocol</th><th>Attack type</th><th>Action</th></tr></thead>
           <tbody>
           {% for a in alerts %}
@@ -482,7 +482,7 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
       <div class="pnb">Last 20 flows</div>
     </div>
     <div class="stw">
-      <table>
+      <table id="traffic-table">
         <thead><tr><th>Time</th><th>Source</th><th>Destination</th><th>Port</th><th>Status</th><th>Confidence</th></tr></thead>
         <tbody>
         {% if live_traffic %}
@@ -580,17 +580,17 @@ setInterval(function(){
     fetch('/api/stats', {credentials: 'include'})
     .then(function(r){ return r.json(); })
     .then(function(d){
-        var tables = document.querySelectorAll('table');
-        if(tables[0] && d.alerts && d.alerts.length > 0){
-            tables[0].querySelector('tbody').innerHTML = d.alerts.map(function(a){
-                var proto='TCP',ps='background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
-                if(a.reason&&a.reason.includes('SSH')){proto='SSH';ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;';}
-                else if(a.reason&&a.reason.includes('FTP')){proto='FTP';ps='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;';}
-                else if(a.reason&&(a.reason.includes('HTTP')||a.reason.includes('SQL')||a.reason.includes('Nikto'))){proto='HTTP';ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;';}
-                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td><span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span></td><td>'+a.reason+'</td><td><span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span></td></tr>';
+        var atable = document.getElementById('alerts-table');
+        if(atable && d.alerts && d.alerts.length > 0){
+            atable.querySelector('tbody').innerHTML = d.alerts.map(function(a){
+                var proto = 'TCP';
+                if(a.reason && a.reason.indexOf('SSH')>=0){ proto='SSH'; }
+                else if(a.reason && a.reason.indexOf('FTP')>=0){ proto='FTP'; }
+                else if(a.reason && (a.reason.indexOf('HTTP')>=0||a.reason.indexOf('SQL')>=0||a.reason.indexOf('Nikto')>=0)){ proto='HTTP'; }
+                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td>'+proto+'</td><td>'+a.reason+'</td><td>Blocked</td></tr>';
             }).join('');
         }
-        var ltable = tables[1] || tables[0];
+        var ltable = document.getElementById('traffic-table');
         if(ltable && d.live_traffic && d.live_traffic.length > 0){
             ltable.querySelector('tbody').innerHTML = d.live_traffic.slice(0,20).map(function(t){
                 var b = t.status==='ATTACK' ? '<span style="color:red;font-weight:700;">ATTACK</span>' : '<span style="color:green;">BENIGN</span>';
