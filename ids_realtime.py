@@ -182,8 +182,9 @@ def analyze_packet(packet):
                 if ip_syn_count[src] > 15 and src not in blocked_ips:
                     log_alert(src, dst, sport, dport, "SYN Flood", round(ip_syn_count[src]/20*100, 1))
                     return
-        # --- PORT SCAN (many distinct ports from one IP) ---
-        if flags & 0x02 and src not in ["127.0.0.1", "10.0.2.15", "192.168.56.103"]:
+        # --- PORT SCAN (SYN pur dirige VERS notre machine, plusieurs ports) ---
+        MY_IPS = ["127.0.0.1", "10.0.2.15", "192.168.56.103"]
+        if (flags & 0x02 and not flags & 0x10) and src not in MY_IPS and dst in MY_IPS:
             ip_ports_seen[src].add(dport)
             if len(ip_ports_seen[src]) > 10 and src not in blocked_ips:
                 log_alert(src, dst, sport, dport, "Port Scan", min(len(ip_ports_seen[src]), 99))
