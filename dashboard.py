@@ -17,44 +17,44 @@ PASSWORD = hashlib.sha256("aegis123".encode()).hexdigest()
 
 
 def parse_logs():
-    alerts, blocked = [], []
-    try:
-        
-        for row in rows:
-            alerts.append({"time": row[0], "ip": row[1], "reason": row[2]})
-            blocked.append({"time": row[0], "ip": row[1], "reason": row[2]})
-    except:
-        pass
-    if not alerts:
-        if os.path.exists("logs/alerts.txt"):
-            for line in open("logs/alerts.txt"):
-                line = line.strip()
-                if "[BLOCKED]" in line and len(line) > 10:
-                    parts = line.split("[BLOCKED]")
-                    t = parts[0].strip()
-                    rest = parts[1].strip() if len(parts) > 1 else ""
-                    ip_r = rest.split("Reason:")
-                    ip = ip_r[0].strip()
-                    reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
-                    if ip:
-                        alerts.append({"ip": ip, "reason": reason, "time": t})
-                        blocked.append({"ip": ip, "reason": reason, "time": t})
-    return alerts, blocked
+  alerts, blocked = [], []
+  try:
+    rows = []
+    for row in rows:
+      alerts.append({"time": row[0], "ip": row[1], "reason": row[2]})
+      blocked.append({"time": row[0], "ip": row[1], "reason": row[2]})
+  except:
+    pass
+  if not alerts:
+    if os.path.exists("logs/alerts.txt"):
+      for line in open("logs/alerts.txt"):
+        line = line.strip()
+        if "[BLOCKED]" in line and len(line) > 10:
+          parts = line.split("[BLOCKED]")
+          t = parts[0].strip()
+          rest = parts[1].strip() if len(parts) > 1 else ""
+          ip_r = rest.split("Reason:")
+          ip = ip_r[0].strip()
+          reason = ip_r[1].strip() if len(ip_r) > 1 else "Unknown"
+          if ip:
+            alerts.append({"ip": ip, "reason": reason, "time": t})
+            blocked.append({"ip": ip, "reason": reason, "time": t})
+  return alerts, blocked
 
 def get_live_traffic():
-    try:
-        
-        return [{"time": r[0], "src": r[1], "dst": r[2], "dport": r[3], "status": r[4], "confidence": r[5]} for r in rows]
-    except:
-        pass
-    try:
-        if os.path.exists("logs/live_traffic.json"):
-            import json
-            data = json.load(open("logs/live_traffic.json"))
-            return list(reversed(data[-20:]))
-    except:
-        pass
-    return []
+  try:
+    rows = []
+    return [{"time": r[0], "src": r[1], "dst": r[2], "dport": r[3], "status": r[4], "confidence": r[5]} for r in rows]
+  except:
+    pass
+  try:
+    if os.path.exists("logs/live_traffic.json"):
+      import json
+      data = json.load(open("logs/live_traffic.json"))
+      return list(reversed(data[-20:]))
+  except:
+    pass
+  return []
 
 
 CLOUD_DATA = {"alerts": [], "traffic": [], "timestamp": ""}
@@ -392,9 +392,9 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
     </a>
   </div>
   <div class="stats">
-    <div class="stat bl"><div class="sa"></div><div class="si">🌐</div><div class="sl">Total flows</div><div class="sv">{{ stats.total_flows }}</div><div class="ss">Monitored</div></div>
-    <div class="stat re"><div class="sa"></div><div class="si">⚠️</div><div class="sl">Attacks</div><div class="sv">{{ stats.attacks }}</div><div class="ss">Detected</div></div>
-    <div class="stat or"><div class="sa"></div><div class="si">🚫</div><div class="sl">IPs blocked</div><div class="sv">{{ stats.blocked }}</div><div class="ss">via iptables</div></div>
+    <div class="stat bl"><div class="sa"></div><div class="si">🌐</div><div class="sl">Total flows</div><div class="sv" id="sv-total">{{ stats.total_flows }}</div><div class="ss">Monitored</div></div>
+    <div class="stat re"><div class="sa"></div><div class="si">⚠️</div><div class="sl">Attacks</div><div class="sv" id="sv-attacks">{{ stats.attacks }}</div><div class="ss">Detected</div></div>
+    <div class="stat or"><div class="sa"></div><div class="si">🚫</div><div class="sl">IPs blocked</div><div class="sv" id="sv-blocked">{{ stats.blocked }}</div><div class="ss">via iptables</div></div>
     <div class="stat gr"><div class="sa"></div><div class="si">✅</div><div class="sl">Accuracy</div><div class="sv">99.88<span style="font-size:14px">%</span></div><div class="ss">ROC-AUC 1.0</div></div>
   </div>
   <div class="ss2">
@@ -435,10 +435,9 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
           <svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           Attack alerts
         </div>
-        <div class="pnb">{{ alerts|length }} events</div>
+        <div class="pnb" id="pnb-events">{{ alerts|length }} events</div>
       </div>
       <div class="stw">
-        {% if alerts %}
         <table id="alerts-table">
           <thead><tr><th>Time</th><th>Source IP</th><th>Location</th><th>Protocol</th><th>Attack type</th><th>Action</th></tr></thead>
           <tbody>
@@ -447,17 +446,14 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
           {% endfor %}
           </tbody>
         </table>
-        {% else %}
-        <div class="emp"><p style="font-size:28px;opacity:.3;margin-bottom:8px">🛡️</p><p>No attacks detected</p></div>
-        {% endif %}
       </div>
     </div>
     <div class="rc2">
       <div class="panel">
         <div class="pnh"><div class="pnt"><svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>Traffic split</div></div>
         <div class="ca">
-          <div class="cr"><div class="cm"><span class="cl">Benign</span><span class="cp" style="color:#10b981">{{ stats.benign_pct }}%</span></div><div class="cbg"><div class="cf fb" style="width:{{ stats.benign_pct }}%"></div></div></div>
-          <div class="cr"><div class="cm"><span class="cl">Attack</span><span class="cp" style="color:#ef4444">{{ stats.attack_pct }}%</span></div><div class="cbg"><div class="cf fa" style="width:{{ [stats.attack_pct,2]|max }}%"></div></div></div>
+          <div class="cr"><div class="cm"><span class="cl">Benign</span><span class="cp" style="color:#10b981" id="pct-benign-t">{{ stats.benign_pct }}%</span></div><div class="cbg"><div class="cf fb" id="pct-benign-b" style="width:{{ stats.benign_pct }}%"></div></div></div>
+          <div class="cr"><div class="cm"><span class="cl">Attack</span><span class="cp" style="color:#ef4444" id="pct-attack-t">{{ stats.attack_pct }}%</span></div><div class="cbg"><div class="cf fa" id="pct-attack-b" style="width:{{ [stats.attack_pct,2]|max }}%"></div></div></div>
         </div>
       </div>
       <div class="panel">
@@ -506,13 +502,15 @@ footer{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px sol
   <div class="bg2">
     <div class="panel">
       <div class="pnh"><div class="pnt"><svg viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>Blocked IPs</div><div class="pnb">{{ blocked_ips|length }} blocked</div></div>
-      {% if blocked_ips %}
+      <div id="blocked-list">
+        {% if blocked_ips %}
         {% for item in blocked_ips %}
         <div class="bli"><div><div class="blip">{{ item.ip }}</div><div class="blr">{{ item.reason }}</div></div><div class="blt">{{ item.time[:19] if item.time|length > 19 else item.time }}</div></div>
         {% endfor %}
-      {% else %}
-      <div class="emp"><p>No IPs blocked yet</p></div>
-      {% endif %}
+        {% else %}
+        <div class="emp"><p>No IPs blocked yet</p></div>
+        {% endif %}
+      </div>
     </div>
     <div class="panel">
       <div class="pnh"><div class="pnt"><svg viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/></svg>Coverage</div></div>
@@ -596,6 +594,32 @@ setInterval(function(){
                 var b = t.status==='ATTACK' ? '<span style="color:red;font-weight:700;">ATTACK</span>' : '<span style="color:green;">BENIGN</span>';
                 return '<tr><td>'+t.time+'</td><td>'+t.src+'</td><td>'+t.dst+'</td><td>'+t.dport+'</td><td>'+b+'</td><td>'+t.confidence+'%</td></tr>';
             }).join('');
+        }
+        var svt = document.getElementById('sv-total');
+        if(svt && d.total_flows !== undefined) svt.innerHTML = d.total_flows;
+        var sva = document.getElementById('sv-attacks');
+        if(sva && d.attacks !== undefined) sva.innerHTML = d.attacks;
+        var svb = document.getElementById('sv-blocked');
+        if(svb && d.blocked !== undefined) svb.innerHTML = d.blocked;
+        var pe = document.getElementById('pnb-events');
+        if(pe && d.attacks !== undefined) pe.innerHTML = d.attacks + ' events';
+        var pbt = document.getElementById('pct-benign-t');
+        if(pbt && d.benign_pct !== undefined) pbt.innerHTML = d.benign_pct + '%';
+        var pbb = document.getElementById('pct-benign-b');
+        if(pbb && d.benign_pct !== undefined) pbb.style.width = d.benign_pct + '%';
+        var pat = document.getElementById('pct-attack-t');
+        if(pat && d.attack_pct !== undefined) pat.innerHTML = d.attack_pct + '%';
+        var pab = document.getElementById('pct-attack-b');
+        if(pab && d.attack_pct !== undefined) pab.style.width = Math.max(d.attack_pct,2) + '%';
+        var bl = document.getElementById('blocked-list');
+        if(bl && d.blocked_ips){
+            if(d.blocked_ips.length > 0){
+                bl.innerHTML = d.blocked_ips.map(function(item){
+                    return '<div class="bli"><div><div class="blip">'+item.ip+'</div><div class="blr">'+item.reason+'</div></div><div class="blt">'+(item.time||'').substring(0,19)+'</div></div>';
+                }).join('');
+            } else {
+                bl.innerHTML = '<div class="emp"><p>No IPs blocked yet</p></div>';
+            }
         }
         var cl = document.getElementById('live-clock');
         if(cl) cl.innerHTML = d.now;
