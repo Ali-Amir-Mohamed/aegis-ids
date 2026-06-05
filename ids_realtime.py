@@ -64,13 +64,11 @@ def log_alert(src, dst, sport, dport, reason, confidence):
     print("  Confidence : " + str(confidence) + "%")
     save_traffic(src, dst, sport, dport, "ATTACK", confidence)
     block_ip(src, reason)
-    if src not in alerted_ips:
-        alerted_ips.add(src)
-        try:
-            from ids_email_alerts import send_alert_email
-            send_alert_email(src, reason, confidence, dport)
-        except Exception as e:
-            print("  [EMAIL] " + str(e))
+    try:
+        from ids_email_alerts import send_alert_email
+        send_alert_email(src, reason, confidence, dport)
+    except Exception as e:
+        print("  [EMAIL] " + str(e))
 
 def extract_features(pkts):
     try:
@@ -178,7 +176,7 @@ def analyze_packet(packet):
 
         # --- SYN FLOOD (runs first, all ports) ---
         if flags & 0x02 and not flags & 0x10:
-            if dport not in [5000, 587, 465, 25]:
+            if dport not in [5000, 587, 465, 25] and src not in ["127.0.0.1", "10.0.2.15", "192.168.56.103"]:
                 ip_syn_count[src] += 1
                 if ip_syn_count[src] > 15 and src not in blocked_ips:
                     log_alert(src, dst, sport, dport, "SYN Flood", round(ip_syn_count[src]/20*100, 1))

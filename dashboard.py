@@ -551,14 +551,7 @@ function playSound(){
         });
     }catch(e){}
 }
-window.onload=function(){
-    var cur=parseInt("{{ stats.attacks if stats is defined else 0 }}");
-    var stored=parseInt(sessionStorage.getItem("atk")||"-1");
-    if(cur>stored && stored>=0){
-        playSound();
-    }
-    sessionStorage.setItem("atk",cur);
-};
+var lastAttackCount = -1;
 </script>
 <script>
 function updateClock(){
@@ -599,6 +592,10 @@ setInterval(function(){
         if(svt && d.total_flows !== undefined) svt.innerHTML = d.total_flows;
         var sva = document.getElementById('sv-attacks');
         if(sva && d.attacks !== undefined) sva.innerHTML = d.attacks;
+        if(d.attacks !== undefined){
+            if(lastAttackCount >= 0 && d.attacks > lastAttackCount){ playSound(); }
+            lastAttackCount = d.attacks;
+        }
         var svb = document.getElementById('sv-blocked');
         if(svb && d.blocked !== undefined) svb.innerHTML = d.blocked;
         var pe = document.getElementById('pnb-events');
