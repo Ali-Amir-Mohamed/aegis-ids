@@ -171,7 +171,7 @@ def analyze_packet(packet):
                 if attack_name and src not in blocked_ips:
                     log_alert(src, dst, sport, dport, attack_name, 95)
                     return
-                if ip_http_count[src] > 100 and src not in blocked_ips:
+                if ip_http_count[src] > 50 and src not in blocked_ips:
                     log_alert(src, dst, sport, dport, "HTTP Flood / DoS Attack", min(round(ip_http_count[src]/200*100, 1), 99))
                     return
 
