@@ -167,6 +167,8 @@ def analyze_packet(packet):
                     attack_name = "DoS GoldenEye Attack"
                 elif "slowloris" in payload.lower():
                     attack_name = "DoS Slowloris Attack"
+                elif "<script" in payload.lower() or "javascript:" in payload.lower() or "onerror=" in payload.lower() or "onload=" in payload.lower() or "alert(" in payload.lower() or "<img src=x" in payload.lower():
+                    attack_name = "XSS Attack (Cross-Site Scripting)"
                 ip_http_count[src] += 1
                 if attack_name and src not in blocked_ips:
                     log_alert(src, dst, sport, dport, attack_name, 95)

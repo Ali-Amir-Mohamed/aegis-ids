@@ -578,7 +578,7 @@ setInterval(function(){
                 var ps = 'background:#fee2e2;border:1px solid #fca5a5;color:#991b1b;';
                 if(a.reason && a.reason.indexOf('SSH')>=0){ proto='SSH'; ps='background:#e0e7ff;border:1px solid #818cf8;color:#3730a3;'; }
                 else if(a.reason && a.reason.indexOf('FTP')>=0){ proto='FTP'; ps='background:#fef3c7;border:1px solid #fbbf24;color:#92400e;'; }
-                else if(a.reason && (a.reason.indexOf('HTTP')>=0||a.reason.indexOf('SQL')>=0||a.reason.indexOf('Nikto')>=0)){ proto='HTTP'; ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
+                else if(a.reason && (a.reason.indexOf('HTTP')>=0||a.reason.indexOf('SQL')>=0||a.reason.indexOf('Nikto')>=0||a.reason.indexOf('XSS')>=0||a.reason.indexOf('GoldenEye')>=0||a.reason.indexOf('Slowloris')>=0)){ proto='HTTP'; ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
                 var badge = '<span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span>';
                 var blocked = '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span>';
                 return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td>'+badge+'</td><td>'+a.reason+'</td><td>'+blocked+'</td></tr>';
