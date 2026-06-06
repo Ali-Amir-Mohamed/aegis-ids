@@ -3,3 +3,4 @@ data/
 *.parquet
 logs/live_traffic.json
 logs/alerts.txt
+ids_email_alerts.py
