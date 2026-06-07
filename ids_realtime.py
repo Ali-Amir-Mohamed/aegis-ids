@@ -195,7 +195,6 @@ def analyze_packet(packet):
         # --- SSH BRUTE FORCE ---
         if dport == 22:
             ip_ssh_count[src] += 1
-            print("  [DEBUG] SSH packet from " + src + " count=" + str(ip_ssh_count[src]))
             if ip_ssh_count[src] > 3 and src not in blocked_ips:
                 log_alert(src, dst, sport, dport, "SSH Brute Force (port 22)", min(ip_ssh_count[src]*10, 99))
                 return
