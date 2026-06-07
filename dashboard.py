@@ -1,5 +1,6 @@
 from flask import Flask, render_template_string, request, redirect, session, send_file, jsonify
-import os, hashlib, json
+import os
+import requests, hashlib, json
 from datetime import datetime
 
 app = Flask(__name__)
@@ -74,6 +75,28 @@ def ingest():
         return jsonify({"status": "ok", "alerts": len(CLOUD_DATA["alerts"]), "traffic": len(CLOUD_DATA["traffic"])})
     return jsonify({"error": "unauthorized"}), 401
 
+_geo_cache = {}
+def get_location(ip):
+    if ip in _geo_cache:
+        return _geo_cache[ip]
+    # IPs privees / locales = pas de geolocalisation
+    if ip.startswith("192.168.") or ip.startswith("10.") or ip.startswith("172.") or ip == "127.0.0.1":
+        _geo_cache[ip] = "Local Network"
+        return "Local Network"
+    try:
+        r = requests.get("http://ip-api.com/json/" + ip + "?fields=status,country,city", timeout=2)
+        d = r.json()
+        if d.get("status") == "success":
+            city = d.get("city", "")
+            country = d.get("country", "")
+            loc = (city + ", " + country) if city else country
+            _geo_cache[ip] = loc
+            return loc
+    except:
+        pass
+    _geo_cache[ip] = "Unknown"
+    return "Unknown"
+
 @app.route("/api/stats")
 def api_stats():
     if not session.get("logged_in"):
@@ -100,6 +123,10 @@ def api_stats():
         traffic = []
         if os.path.exists("logs/live_traffic.json"):
             traffic = json.load(open("logs/live_traffic.json"))
+    # Enrichir chaque alerte avec sa geolocalisation
+    for a in alerts:
+        if "location" not in a:
+            a["location"] = get_location(a.get("ip", ""))
     blocked = alerts
     total = 100 + len(alerts) * 12
     attack = len(alerts)
@@ -581,7 +608,7 @@ setInterval(function(){
                 else if(a.reason && (a.reason.indexOf('HTTP')>=0||a.reason.indexOf('SQL')>=0||a.reason.indexOf('Nikto')>=0||a.reason.indexOf('XSS')>=0||a.reason.indexOf('GoldenEye')>=0||a.reason.indexOf('Slowloris')>=0)){ proto='HTTP'; ps='background:#fce7f3;border:1px solid #f9a8d4;color:#9d174d;'; }
                 var badge = '<span style="'+ps+'padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">'+proto+'</span>';
                 var blocked = '<span style="background:#fee2e2;color:#991b1b;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:700;">Blocked</span>';
-                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>Unknown</td><td>'+badge+'</td><td>'+a.reason+'</td><td>'+blocked+'</td></tr>';
+                return '<tr><td>'+(a.time||'').substring(0,19)+'</td><td>'+a.ip+'</td><td>'+(a.location||'Unknown')+'</td><td>'+badge+'</td><td>'+a.reason+'</td><td>'+blocked+'</td></tr>';
             }).join('');
         }
         var ltable = document.getElementById('traffic-table');
